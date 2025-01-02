@@ -9,8 +9,8 @@
 CHIP And {
     IN a, b;
     OUT out;
-    a
     
     PARTS:
-    //// Replace this comment with your code.
+    Nand(a=a, b=b, out=nand);
+    Not(in=nand, out=out);
 }
