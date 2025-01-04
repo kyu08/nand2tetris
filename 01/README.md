@@ -1,0 +1,15 @@
+- [x] not
+- [x] and
+- [ ] or
+- [ ] xor
+- [ ] mux
+- [ ] dmux
+- [ ] not16
+- [ ] and16
+- [ ] or16
+- [ ] mux16
+- [ ] or8way
+- [ ] mux4way16
+- [ ] mux8way16
+- [ ] dmux4way
+- [ ] dmux8way
