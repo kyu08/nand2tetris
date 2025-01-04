@@ -4,7 +4,7 @@
 - [x] xor
 - [x] mux
 - [x] dmux
-- [ ] not16
+- [x] not16
 - [ ] and16
 - [ ] or16
 - [ ] mux16
