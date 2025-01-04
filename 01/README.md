@@ -1,6 +1,6 @@
 - [x] not
 - [x] and
-- [ ] or
+- [x] or
 - [ ] xor
 - [ ] mux
 - [ ] dmux
