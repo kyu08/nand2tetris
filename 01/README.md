@@ -6,7 +6,7 @@
 - [x] dmux
 - [x] not16
 - [x] and16
-- [ ] or16
+- [x] or16
 - [ ] mux16
 - [ ] or8way
 - [ ] mux4way16
