@@ -3,7 +3,7 @@
 - [x] or
 - [x] xor
 - [x] mux
-- [ ] dmux
+- [x] dmux
 - [ ] not16
 - [ ] and16
 - [ ] or16
