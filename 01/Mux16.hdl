@@ -12,5 +12,56 @@ CHIP Mux16 {
     OUT out[16];
 
     PARTS:
-    //// Replace this comment with your code.
+    Not(in=sel, out=notSel);
+
+    And(a=a[0], b=notSel, out=aResult0);
+    And(a=a[1], b=notSel, out=aResult1);
+    And(a=a[2], b=notSel, out=aResult2);
+    And(a=a[3], b=notSel, out=aResult3);
+    And(a=a[4], b=notSel, out=aResult4);
+    And(a=a[5], b=notSel, out=aResult5);
+    And(a=a[6], b=notSel, out=aResult6);
+    And(a=a[7], b=notSel, out=aResult7);
+    And(a=a[8], b=notSel, out=aResult8);
+    And(a=a[9], b=notSel, out=aResult9);
+    And(a=a[10], b=notSel, out=aResult10);
+    And(a=a[11], b=notSel, out=aResult11);
+    And(a=a[12], b=notSel, out=aResult12);
+    And(a=a[13], b=notSel, out=aResult13);
+    And(a=a[14], b=notSel, out=aResult14);
+    And(a=a[15], b=notSel, out=aResult15);
+
+    And(a=b[0], b=sel, out=bResult0);
+    And(a=b[1], b=sel, out=bResult1);
+    And(a=b[2], b=sel, out=bResult2);
+    And(a=b[3], b=sel, out=bResult3);
+    And(a=b[4], b=sel, out=bResult4);
+    And(a=b[5], b=sel, out=bResult5);
+    And(a=b[6], b=sel, out=bResult6);
+    And(a=b[7], b=sel, out=bResult7);
+    And(a=b[8], b=sel, out=bResult8);
+    And(a=b[9], b=sel, out=bResult9);
+    And(a=b[10], b=sel, out=bResult10);
+    And(a=b[11], b=sel, out=bResult11);
+    And(a=b[12], b=sel, out=bResult12);
+    And(a=b[13], b=sel, out=bResult13);
+    And(a=b[14], b=sel, out=bResult14);
+    And(a=b[15], b=sel, out=bResult15);
+
+    Or(a=aResult0, b=bResult0, out=out[0]);
+    Or(a=aResult1, b=bResult1, out=out[1]);
+    Or(a=aResult2, b=bResult2, out=out[2]);
+    Or(a=aResult3, b=bResult3, out=out[3]);
+    Or(a=aResult4, b=bResult4, out=out[4]);
+    Or(a=aResult5, b=bResult5, out=out[5]);
+    Or(a=aResult6, b=bResult6, out=out[6]);
+    Or(a=aResult7, b=bResult7, out=out[7]);
+    Or(a=aResult8, b=bResult8, out=out[8]);
+    Or(a=aResult9, b=bResult9, out=out[9]);
+    Or(a=aResult10, b=bResult10, out=out[10]);
+    Or(a=aResult11, b=bResult11, out=out[11]);
+    Or(a=aResult12, b=bResult12, out=out[12]);
+    Or(a=aResult13, b=bResult13, out=out[13]);
+    Or(a=aResult14, b=bResult14, out=out[14]);
+    Or(a=aResult15, b=bResult15, out=out[15]);
 }

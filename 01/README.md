@@ -7,7 +7,7 @@
 - [x] not16
 - [x] and16
 - [x] or16
-- [ ] mux16
+- [x] mux16
 - [ ] or8way
 - [ ] mux4way16
 - [ ] mux8way16
