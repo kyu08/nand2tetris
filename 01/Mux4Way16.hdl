@@ -14,5 +14,134 @@ CHIP Mux4Way16 {
     OUT out[16];
     
     PARTS:
-    //// Replace this comment with your code.
+    Not(in=sel[0], out=notSel0);
+    Not(in=sel[1], out=notSel1);
+
+    /* a */
+    And(a=notSel0, b=notSel1 ,out=aSel);
+    And(a=a[0], b=aSel, out=aResult0);
+    And(a=a[1], b=aSel, out=aResult1);
+    And(a=a[2], b=aSel, out=aResult2);
+    And(a=a[3], b=aSel, out=aResult3);
+    And(a=a[4], b=aSel, out=aResult4);
+    And(a=a[5], b=aSel, out=aResult5);
+    And(a=a[6], b=aSel, out=aResult6);
+    And(a=a[7], b=aSel, out=aResult7);
+    And(a=a[8], b=aSel, out=aResult8);
+    And(a=a[9], b=aSel, out=aResult9);
+    And(a=a[10], b=aSel, out=aResult10);
+    And(a=a[11], b=aSel, out=aResult11);
+    And(a=a[12], b=aSel, out=aResult12);
+    And(a=a[13], b=aSel, out=aResult13);
+    And(a=a[14], b=aSel, out=aResult14);
+    And(a=a[15], b=aSel, out=aResult15);
+
+    /* b */
+    And(a=sel[0], b=notSel1, out=bSel);
+    And(a=b[0], b=bSel, out=bResult0);
+    And(a=b[1], b=bSel, out=bResult1);
+    And(a=b[2], b=bSel, out=bResult2);
+    And(a=b[3], b=bSel, out=bResult3);
+    And(a=b[4], b=bSel, out=bResult4);
+    And(a=b[5], b=bSel, out=bResult5);
+    And(a=b[6], b=bSel, out=bResult6);
+    And(a=b[7], b=bSel, out=bResult7);
+    And(a=b[8], b=bSel, out=bResult8);
+    And(a=b[9], b=bSel, out=bResult9);
+    And(a=b[10], b=bSel, out=bResult10);
+    And(a=b[11], b=bSel, out=bResult11);
+    And(a=b[12], b=bSel, out=bResult12);
+    And(a=b[13], b=bSel, out=bResult13);
+    And(a=b[14], b=bSel, out=bResult14);
+    And(a=b[15], b=bSel, out=bResult15);
+
+    /* c */
+    And(a=notSel0, b=sel[1], out=cSel);
+    And(a=c[0], b=cSel, out=cResult0);
+    And(a=c[1], b=cSel, out=cResult1);
+    And(a=c[2], b=cSel, out=cResult2);
+    And(a=c[3], b=cSel, out=cResult3);
+    And(a=c[4], b=cSel, out=cResult4);
+    And(a=c[5], b=cSel, out=cResult5);
+    And(a=c[6], b=cSel, out=cResult6);
+    And(a=c[7], b=cSel, out=cResult7);
+    And(a=c[8], b=cSel, out=cResult8);
+    And(a=c[9], b=cSel, out=cResult9);
+    And(a=c[10], b=cSel, out=cResult10);
+    And(a=c[11], b=cSel, out=cResult11);
+    And(a=c[12], b=cSel, out=cResult12);
+    And(a=c[13], b=cSel, out=cResult13);
+    And(a=c[14], b=cSel, out=cResult14);
+    And(a=c[15], b=cSel, out=cResult15);
+
+    /* d */
+    And(a=sel[0], b=sel[1], out=dSel);
+    And(a=d[0], b=dSel, out=dResult0);
+    And(a=d[1], b=dSel, out=dResult1);
+    And(a=d[2], b=dSel, out=dResult2);
+    And(a=d[3], b=dSel, out=dResult3);
+    And(a=d[4], b=dSel, out=dResult4);
+    And(a=d[5], b=dSel, out=dResult5);
+    And(a=d[6], b=dSel, out=dResult6);
+    And(a=d[7], b=dSel, out=dResult7);
+    And(a=d[8], b=dSel, out=dResult8);
+    And(a=d[9], b=dSel, out=dResult9);
+    And(a=d[10], b=dSel, out=dResult10);
+    And(a=d[11], b=dSel, out=dResult11);
+    And(a=d[12], b=dSel, out=dResult12);
+    And(a=d[13], b=dSel, out=dResult13);
+    And(a=d[14], b=dSel, out=dResult14);
+    And(a=d[15], b=dSel, out=dResult15);
+
+    /* or4way16 */
+    Or(a=aResult0, b=bResult0, out=orUpToB0);
+    Or(a=aResult1, b=bResult1, out=orUpToB1);
+    Or(a=aResult2, b=bResult2, out=orUpToB2);
+    Or(a=aResult3, b=bResult3, out=orUpToB3);
+    Or(a=aResult4, b=bResult4, out=orUpToB4);
+    Or(a=aResult5, b=bResult5, out=orUpToB5);
+    Or(a=aResult6, b=bResult6, out=orUpToB6);
+    Or(a=aResult7, b=bResult7, out=orUpToB7);
+    Or(a=aResult8, b=bResult8, out=orUpToB8);
+    Or(a=aResult9, b=bResult9, out=orUpToB9);
+    Or(a=aResult10, b=bResult10, out=orUpToB10);
+    Or(a=aResult11, b=bResult11, out=orUpToB11);
+    Or(a=aResult12, b=bResult12, out=orUpToB12);
+    Or(a=aResult13, b=bResult13, out=orUpToB13);
+    Or(a=aResult14, b=bResult14, out=orUpToB14);
+    Or(a=aResult15, b=bResult15, out=orUpToB15);
+
+    Or(a=orUpToB0, b=cResult0, out=orUpToC0);
+    Or(a=orUpToB1, b=cResult1, out=orUpToC1);
+    Or(a=orUpToB2, b=cResult2, out=orUpToC2);
+    Or(a=orUpToB3, b=cResult3, out=orUpToC3);
+    Or(a=orUpToB4, b=cResult4, out=orUpToC4);
+    Or(a=orUpToB5, b=cResult5, out=orUpToC5);
+    Or(a=orUpToB6, b=cResult6, out=orUpToC6);
+    Or(a=orUpToB7, b=cResult7, out=orUpToC7);
+    Or(a=orUpToB8, b=cResult8, out=orUpToC8);
+    Or(a=orUpToB9, b=cResult9, out=orUpToC9);
+    Or(a=orUpToB10, b=cResult10, out=orUpToC10);
+    Or(a=orUpToB11, b=cResult11, out=orUpToC11);
+    Or(a=orUpToB12, b=cResult12, out=orUpToC12);
+    Or(a=orUpToB13, b=cResult13, out=orUpToC13);
+    Or(a=orUpToB14, b=cResult14, out=orUpToC14);
+    Or(a=orUpToB15, b=cResult15, out=orUpToC15);
+
+    Or(a=orUpToC0, b=dResult0, out=out[0]);
+    Or(a=orUpToC1, b=dResult1, out=out[1]);
+    Or(a=orUpToC2, b=dResult2, out=out[2]);
+    Or(a=orUpToC3, b=dResult3, out=out[3]);
+    Or(a=orUpToC4, b=dResult4, out=out[4]);
+    Or(a=orUpToC5, b=dResult5, out=out[5]);
+    Or(a=orUpToC6, b=dResult6, out=out[6]);
+    Or(a=orUpToC7, b=dResult7, out=out[7]);
+    Or(a=orUpToC8, b=dResult8, out=out[8]);
+    Or(a=orUpToC9, b=dResult9, out=out[9]);
+    Or(a=orUpToC10, b=dResult10, out=out[10]);
+    Or(a=orUpToC11, b=dResult11, out=out[11]);
+    Or(a=orUpToC12, b=dResult12, out=out[12]);
+    Or(a=orUpToC13, b=dResult13, out=out[13]);
+    Or(a=orUpToC14, b=dResult14, out=out[14]);
+    Or(a=orUpToC15, b=dResult15, out=out[15]);
 }

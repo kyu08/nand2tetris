@@ -9,7 +9,7 @@
 - [x] or16
 - [x] mux16
 - [x] or8way
-- [ ] mux4way16
+- [x] mux4way16
 - [ ] mux8way16
 - [ ] dmux4way
 - [ ] dmux8way
