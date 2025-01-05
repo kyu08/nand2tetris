@@ -12,4 +12,4 @@
 - [x] mux4way16
 - [x] mux8way16
 - [x] dmux4way
-- [ ] dmux8way
+- [x] dmux8way
