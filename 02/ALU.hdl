@@ -41,5 +41,35 @@ CHIP ALU {
         ng;      // if (out < 0)  equals 1, else 0
 
     PARTS:
-    //// Replace this comment with your code.
+    // pre_process - zx
+    Mux16(a=x, b[0..15]=false, sel=zx, out=zxResult);
+
+    // pre_process - nx
+    Not16(in=zxResult, out=notX);
+    Mux16(a=zxResult, b=notX, sel=nx, out=nxResult);
+
+    // pre_process - zy
+    Mux16(a=y, b[0..15]=false, sel=zy, out=zyResult);
+
+    // pre_process - ny
+    Not16(in=zyResult, out=notY);
+    Mux16(a=zyResult, b=notY, sel=ny, out=nyResult);
+
+    // calculate
+    // if f == 1 then: x+y: Add16
+    // else x&y: And16
+    And16(a=nxResult, b=nyResult, out=and);
+    Add16(a=nxResult, b=nyResult, out=add);
+    Mux16(a=and, b=add, sel=f, out=calculateResult);
+
+    // post_process
+    Not16(in=calculateResult, out=notCalculateResult);
+    // NOTE: 出力の一部を呼び出したい場合は、out[0..7]=out0To7 のように指定しておく必要がある
+    Mux16(a=calculateResult, b=notCalculateResult, sel=no, out=out, out[0..7]=out0To7, out[8..15]=out8To15, out[15]=ng);
+
+    // zr
+    Or8Way(in=out0To7, out=zrUpTo7);
+    Or8Way(in=out8To15, out=zrUpTo15);
+    Or(a=zrUpTo7, b=zrUpTo15, out=notZr);
+    Not(in=notZr, out=zr);
 }
