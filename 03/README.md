@@ -1,7 +1,7 @@
 ## a
 - [x] Bit
 - [x] Register
-- [ ] RAM8
+- [x] RAM8
 - [ ] RAM64
 - [ ] PC
 
