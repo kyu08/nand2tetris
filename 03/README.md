@@ -8,4 +8,4 @@
 ## b
 - [x] RAM512
 - [x] RAM4K
-- [ ] RAM16K
+- [x] RAM16K
