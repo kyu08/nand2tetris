@@ -32,19 +32,24 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
+    // instruction[15]==0のとき、instructionはAレジスタにloadされる
+
     // Aレジスタ
     // A命令 || (C命令 && instruction[5] == 1)のときはAレジスタにloadする
-    Mux16(a=aluOut, b=instruction, sel=instruction[15], out=aRegisterIn);
-    Not(in=instruction[15], out=cInstruction);
-    And(a=cInstruction, b=instruction[5], out=cInstructionAndShouldLoad);
-    Or(a=instruction[15], b=cInstructionAndShouldLoad, out=aRegisterLoad);
+    Not(in=instruction[15], out=aInstruction);
+    Mux16(a=aluOut, b=instruction, sel=aInstruction, out=aRegisterIn);
+    And(a=instruction[15], b=instruction[5], out=cInstructionAndShouldLoad);
+    Or(a=aInstruction, b=cInstructionAndShouldLoad, out=aRegisterLoad);
     ARegister(in=aRegisterIn, load=aRegisterLoad, out[0..14]=addressM, out=aRegisterOut);
 
     //  Dレジスタ
+    // TODO: D=AのときはAレジスタの値をDレジスタにloadする必要がある
     DRegister(in=aluOut, load=instruction[4], out=dRegisterOut);
 
     // ALUの前段のmux
-    Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=aluInY);
+    Not(in=instruction[11], out=notInstruction11);
+    Mux16(a=aRegisterOut, b=inM, sel=notInstruction11, out=aluInY);
+    // Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=aluInY);
 
     // ALU
     ALU(x=dRegisterOut, y=aluInY, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=aluOut, zr=zr, ng=ng);
