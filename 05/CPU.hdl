@@ -43,13 +43,12 @@ CHIP CPU {
     ARegister(in=aRegisterIn, load=aRegisterLoad, out[0..14]=addressM, out=aRegisterOut);
 
     //  Dレジスタ
-    // TODO: D=AのときはAレジスタの値をDレジスタにloadする必要がある
-    DRegister(in=aluOut, load=instruction[4], out=dRegisterOut);
+    // TODO: C命令 && D=AのときはAレジスタの値をDレジスタにloadする必要がある
+    And(a=instruction[15], b=instruction[4], out=shouldLoadToDRegister);
+    DRegister(in=aluOut, load=shouldLoadToDRegister, out=dRegisterOut);
 
     // ALUの前段のmux
-    Not(in=instruction[11], out=notInstruction11);
-    Mux16(a=aRegisterOut, b=inM, sel=notInstruction11, out=aluInY);
-    // Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=aluInY);
+    Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=aluInY);
 
     // ALU
     ALU(x=dRegisterOut, y=aluInY, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=aluOut, zr=zr, ng=ng);
