@@ -65,7 +65,8 @@ CHIP CPU {
     Not(in=ng, out=notNg);
     And(a=notZr, b=notNg, out=jgt);
     And(a=notZr, b=ng, out=jlt);
-    Mux8Way16(a[0]=false, b[0]=jgt, c[0]=zr, d[0]=notNg, e[0]=jlt, f[0]=notZr, g[0]=ng, h[0]=true, sel=instruction[0..2], out[0]=satisfyJumpCond);
+    Or(a=zr, b=ng, out=jle);
+    Mux8Way16(a[0]=false, b[0]=jgt, c[0]=zr, d[0]=notNg, e[0]=jlt, f[0]=notZr, g[0]=jle, h[0]=true, sel=instruction[0..2], out[0]=satisfyJumpCond);
     And(a=satisfyJumpCond, b=instruction[15], out=shouldJump);
     Not(in=shouldJump, out=notShouldJump);
 
