@@ -32,5 +32,37 @@ CHIP CPU {
         pc[15];          // address of next instruction
 
     PARTS:
-	//// Replace this comment with your code.
+    // Aレジスタ
+    // A命令 || (C命令 && instruction[5] == 1)のときはAレジスタにloadする
+    Mux16(a=aluOut, b=instruction, sel=instruction[15], out=aRegisterIn);
+    Not(in=instruction[15], out=cInstruction);
+    And(a=cInstruction, b=instruction[5], out=cInstructionAndShouldLoad);
+    Or(a=instruction[15], b=cInstructionAndShouldLoad, out=aRegisterLoad);
+    ARegister(in=aRegisterIn, load=aRegisterLoad, out[0..14]=addressM, out=aRegisterOut);
+
+    //  Dレジスタ
+    DRegister(in=aluOut, load=instruction[4], out=dRegisterOut);
+
+    // ALUの前段のmux
+    Mux16(a=aRegisterOut, b=inM, sel=instruction[12], out=aluInY);
+
+    // ALU
+    ALU(x=dRegisterOut, y=aluInY, zx=instruction[11], nx=instruction[10], zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], out=outM, out=aluOut, zr=zr, ng=ng);
+
+    // PC
+    Not(in=instruction[0], out=notInstruction0);
+    Not(in=instruction[1], out=notInstruction1);
+    Not(in=instruction[2], out=notInstruction2);
+    And(a=notInstruction0, b=notInstruction1, out=shouldNotJumpTemp);
+    And(a=shouldNotJumpTemp, b=notInstruction2, out=shouldNotJump); // jjj == 000
+
+    // PC - pcIn
+    // aから順にnull, JGT, JEQ, JGE, JLT, JNE, JLE, JMP
+    Not(in=zr, out=notZr);
+    Not(in=ng, out=notNg);
+    And(a=notZr, b=notNg, out=jgt);
+    And(a=notZr, b=ng, out=jlt);
+    Mux8Way16(a[0]=false, b[0]=jgt, c[0]=zr, d[0]=notNg, e[0]=jlt, f[0]=notZr, g[0]=ng, h[0]=true, sel=instruction[0..2], out[0]=shouldJump);
+    Not(in=shouldJump, out=notShouldJump);
+    PC(in=aRegisterOut, load=shouldJump, inc=notShouldJump, reset=reset, out[0..14]=pc);
 }
