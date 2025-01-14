@@ -43,10 +43,18 @@ mod test {
             read_to_string("test_data/add/Add.hack").unwrap()
         );
         assert_eq!(
+            format!("{}\n", assemble(PathBuf::from("test_data/max/Max.asm"))),
+            read_to_string("test_data/max/Max.hack").unwrap()
+        );
+        assert_eq!(
             format!("{}\n", assemble(PathBuf::from("test_data/max/MaxL.asm"))),
             read_to_string("test_data/max/MaxL.hack").unwrap()
         );
-        // NOTE: ↑の2ファイルだけ末尾改行が入ってない or ↓だけ末尾改行が入っちゃってる
+        // NOTE: ↑の3ファイルだけ末尾改行が入ってない or ↓だけ末尾改行が入っちゃってる
+        assert_eq!(
+            assemble(PathBuf::from("test_data/pong/Pong.asm")),
+            read_to_string("test_data/pong/Pong.hack").unwrap()
+        );
         assert_eq!(
             assemble(PathBuf::from("test_data/pong/PongL.asm")),
             read_to_string("test_data/pong/PongL.hack").unwrap()
@@ -54,6 +62,10 @@ mod test {
         assert_eq!(
             assemble(PathBuf::from("test_data/rect/RectL.asm")),
             read_to_string("test_data/rect/RectL.hack").unwrap()
+        );
+        assert_eq!(
+            assemble(PathBuf::from("test_data/rect/Rect.asm")),
+            read_to_string("test_data/rect/Rect.hack").unwrap()
         );
     }
 }
