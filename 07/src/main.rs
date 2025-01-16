@@ -19,7 +19,8 @@ fn main() {
     };
 
     let vm_program = parse(source_file_path);
-    let binary = vm_program.to_string();
+    let machine_language = vm_program.to_string();
+    println!("{}", machine_language);
     // let _ = std::fs::write(output_file_path, &binary);
 }
 

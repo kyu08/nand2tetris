@@ -26,20 +26,20 @@ impl VMProgram {
                 "and" => Some(Command::Arithmetic(ArithmeticCommand::And)),
                 "or" => Some(Command::Arithmetic(ArithmeticCommand::Or)),
                 "not" => Some(Command::Arithmetic(ArithmeticCommand::Not)),
-                "push" => match (terms.get(1), terms.get(2)) {
-                    (Some(first_arg), Some(second_arg)) => match (Segment::new(first_arg), second_arg.parse::<u32>()) {
-                        (Some(segment), Ok(index)) => Some(Command::Push(segment, index)),
-                        _ => None,
-                    },
-                    _ => None,
-                },
-                "pop" => match (terms.get(1), terms.get(2)) {
-                    (Some(first_arg), Some(second_arg)) => match (Segment::new(first_arg), second_arg.parse::<u32>()) {
-                        (Some(segment), Ok(index)) => Some(Command::Pop(segment, index)),
-                        _ => None,
-                    },
-                    _ => None,
-                },
+                "push" => terms.get(1).zip(terms.get(2)).and_then(|(first_arg, second_arg)| {
+                    second_arg
+                        .parse::<u32>()
+                        .ok()
+                        .and_then(|index| Segment::new(first_arg, index))
+                        .map(Command::Push)
+                }),
+                "pop" => terms.get(1).zip(terms.get(2)).and_then(|(first_arg, second_arg)| {
+                    second_arg
+                        .parse::<u32>()
+                        .ok()
+                        .and_then(|index| Segment::new(first_arg, index))
+                        .map(Command::Pop)
+                }),
                 _ => None,
             };
             if let Some(command) = command {
@@ -53,23 +53,21 @@ impl VMProgram {
 
 impl std::fmt::Display for VMProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.commands
-                .iter()
-                .map(|c| c.to_string())
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
+        // SPの初期化コマンド
+        let init_commands = ["@256", "D=A", "@SP", "M=D"].iter().map(|c| c.to_string()).collect();
+        let parsed_commands: Vec<String> = self.commands.iter().map(|c| c.to_string()).collect();
+        println!("{:?}", init_commands);
+        println!("{:?}", parsed_commands);
+        todo!("終了用の無限ループのコマンドを追加する");
+        write!(f, "{}", [init_commands, parsed_commands].concat().join("\n"))
     }
 }
 
 #[derive(PartialEq, Eq, Debug)]
 enum Command {
     Arithmetic(ArithmeticCommand),
-    Push(Segment, u32),
-    Pop(Segment, u32),
+    Push(Segment),
+    Pop(Segment),
     // これ以降のvariantは第8章で実装する
     #[allow(dead_code)]
     Label,
@@ -87,14 +85,56 @@ enum Command {
 
 impl Command {
     fn new(line: String) -> Self {
-        Command::Call
+        todo!("impl");
     }
 }
 
+// 機械語に翻訳するときにやること
+// ## push
+// 1. 値を取得
+//    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
+//    segment[index]の値を取得
+// 2. 取得した値をstackにpush
+
+// ## pop
+// 1. 値を取得
+//    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
+//    segment[index]の値を取得
+// 2. 取得した値をstackにpush
 impl std::fmt::Display for Command {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!("impl");
-        // write!(f, "{}", self.to_string())
+        let commands = match self {
+            Command::Push(segment) => {
+                [
+                    format!("@{}", segment.clone().get_address()).as_str(),
+                    format!("D={}", segment.clone().get_value_register_name()).as_str(),
+                    "@SP",
+                    "A=M",
+                    "M=D", // SPに値を格納
+                    "@SP",
+                    "M=M+1", // SPをインクリメント
+                ]
+                .map(|c| c.to_string())
+                .to_vec()
+                .join("\n")
+            }
+            Command::Pop(segment) => {
+                [
+                    "@SP",
+                    "A=M",
+                    "D=M",
+                    format!("@{}", segment.clone().get_address()).as_str(),
+                    "M=D", // SPの値を指定されたセグメントに格納
+                    "@SP",
+                    "M=M-1", // SPをデクリメント
+                ]
+                .map(|c| c.to_string())
+                .to_vec()
+                .join("\n")
+            }
+            _ => todo!("not implemented"),
+        };
+        write!(f, "{}", commands)
     }
 }
 
@@ -118,38 +158,54 @@ impl std::fmt::Display for ArithmeticCommand {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 enum Segment {
-    Argument,
-    Local,
-    Static,
-    Constant,
-    This,
-    That,
-    Pointer,
-    Temp,
+    Argument(u32),
+    Local(u32),
+    Static(u32),
+    Constant(u32),
+    This(u32),
+    That(u32),
+    Pointer(u32),
+    Temp(u32),
 }
 
 impl Segment {
-    fn new(arg: &str) -> Option<Self> {
+    fn new(arg: &str, index: u32) -> Option<Self> {
         match arg {
-            "argument" => Some(Self::Argument),
-            "local" => Some(Self::Local),
-            "static" => Some(Self::Static),
-            "constant" => Some(Self::Constant),
-            "this" => Some(Self::This),
-            "that" => Some(Self::That),
-            "pointer" => Some(Self::Pointer),
-            "temp" => Some(Self::Temp),
+            "argument" => Some(Self::Argument(index)),
+            "local" => Some(Self::Local(index)),
+            "static" => Some(Self::Static(index)),
+            "constant" => Some(Self::Constant(index)),
+            "this" => Some(Self::This(index)),
+            "that" => Some(Self::That(index)),
+            "pointer" => Some(Self::Pointer(index)),
+            "temp" => Some(Self::Temp(index)),
             _ => None,
         }
     }
-}
 
-impl std::fmt::Display for Segment {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!("impl");
-        // write!(f, "{}", self.to_string())
+    // Segmentの実アドレスを返す
+    fn get_address(self) -> u32 {
+        match self {
+            Self::Argument(index) => todo!("impl"),
+            Self::Local(index) => todo!("impl"),
+            Self::Static(index) => todo!("impl"),
+            Self::Constant(index) => index,
+            Self::This(index) => todo!("impl"),
+            Self::That(index) => todo!("impl"),
+            Self::Pointer(index) => todo!("impl"),
+            Self::Temp(index) => todo!("impl"),
+        }
+    }
+
+    // そのセグメントのデータが格納されているレジスタ名を返す(AまたはD)
+    fn get_value_register_name(&self) -> String {
+        if let Self::Constant(_) = self {
+            "A".to_string()
+        } else {
+            "M".to_string()
+        }
     }
 }
 
@@ -157,6 +213,7 @@ impl std::fmt::Display for Segment {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+
     #[test]
     fn test_vm_program_new() {
         assert_eq!(
@@ -199,30 +256,30 @@ add
             ),
             VMProgram {
                 commands: vec![
-                    Command::Push(Segment::Constant, 10),
-                    Command::Pop(Segment::Local, 0),
-                    Command::Push(Segment::Constant, 21),
-                    Command::Push(Segment::Constant, 22),
-                    Command::Pop(Segment::Argument, 2),
-                    Command::Pop(Segment::Argument, 1),
-                    Command::Push(Segment::Constant, 36),
-                    Command::Pop(Segment::This, 6),
-                    Command::Push(Segment::Constant, 42),
-                    Command::Push(Segment::Constant, 45),
-                    Command::Pop(Segment::That, 5),
-                    Command::Pop(Segment::That, 2),
-                    Command::Push(Segment::Constant, 510),
-                    Command::Pop(Segment::Temp, 6),
-                    Command::Push(Segment::Local, 0),
-                    Command::Push(Segment::That, 5),
+                    Command::Push(Segment::Constant(10)),
+                    Command::Pop(Segment::Local(0)),
+                    Command::Push(Segment::Constant(21)),
+                    Command::Push(Segment::Constant(22)),
+                    Command::Pop(Segment::Argument(2)),
+                    Command::Pop(Segment::Argument(1)),
+                    Command::Push(Segment::Constant(36)),
+                    Command::Pop(Segment::This(6)),
+                    Command::Push(Segment::Constant(42)),
+                    Command::Push(Segment::Constant(45)),
+                    Command::Pop(Segment::That(5)),
+                    Command::Pop(Segment::That(2)),
+                    Command::Push(Segment::Constant(510)),
+                    Command::Pop(Segment::Temp(6)),
+                    Command::Push(Segment::Local(0)),
+                    Command::Push(Segment::That(5)),
                     Command::Arithmetic(ArithmeticCommand::Add),
-                    Command::Push(Segment::Argument, 1),
+                    Command::Push(Segment::Argument(1)),
                     Command::Arithmetic(ArithmeticCommand::Sub),
-                    Command::Push(Segment::This, 6),
-                    Command::Push(Segment::This, 6),
+                    Command::Push(Segment::This(6)),
+                    Command::Push(Segment::This(6)),
                     Command::Arithmetic(ArithmeticCommand::Add),
                     Command::Arithmetic(ArithmeticCommand::Sub),
-                    Command::Push(Segment::Temp, 6),
+                    Command::Push(Segment::Temp(6)),
                     Command::Arithmetic(ArithmeticCommand::Add),
                 ]
             }
