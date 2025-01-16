@@ -1,5 +1,9 @@
 export RUST_BACKTRACE=full
 
+# こんな感じで任意の対象ファイルを指定すると指定したFoo.asmファイルと同階層にgen.Foo.hackが生成される
+run-example:
+	cargo run -- test_data/pong/Pong.asm
+
 ci:
 	@make test-ci; \
 	make check; \
@@ -22,4 +26,4 @@ fmt:
 check:
 	@cargo clippy -- -D warnings
 
-.PHONY: ci tool-test test build fmt check
+.PHONY: run-example ci tool-test test build fmt check
