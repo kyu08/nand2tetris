@@ -190,16 +190,77 @@ impl Segment {
 
     // Segmentの実アドレスを返す命令群を返す
     fn get_address_instructions(&self) -> Vec<String> {
+        // FIXME: 動的に変える
+        let suffix = "000";
         match self {
-            Self::Argument(index) => vec!["@ARG".to_string(), format!("A=M+{}", index)],
-            Self::Local(index) => vec!["@LCL".to_string(), format!("A=M+{}", index)],
-            Self::Static(index) => todo!("P177を参照して実装する"),
-            Self::Constant(value) => vec![format!("@{}", value)],
-            Self::This(index) => vec!["@THIS".to_string(), format!("A=M+{}", index)],
-            Self::That(index) => vec!["@THAT".to_string(), format!("A=M+{}", index)],
-            Self::Pointer(index) => todo!("P176を参照して実装する"),
-            Self::Temp(index) => todo!("P176を参照して実装する"),
+            // ALUには+1しか定義されていないので工夫する必要がある（ループでindex回インクリメントする）
+            Self::Argument(index) => {
+                let result = format!("result_{}", suffix);
+                let index_register = format!("index_{}", suffix);
+                vec![
+                    // @ARGの値にindexをインクリメントする(index回ループを回して+1していく)
+                    "@n", // ループ制御変数
+                    "M=0",
+                    format!("@{}", index).as_str(),
+                    "D=M",
+                    format!("@{}", index_register).as_str(), // index_register: indexの値を保持するレジスタ
+                    "M=D",
+                    format!("@{}", self.segment_name()).as_str(),
+                    "D=M",
+                    format!("@{}", result).as_str(), // resultを初期化
+                    "M=D",
+                    "(INCREMENT_INDEX_START)",
+                    // if n == index_register then goto end of loop
+                    "@n",
+                    "D=M",
+                    format!("@{}", index_register).as_str(),
+                    "D=D-M",
+                    "@INCREMENT_INDEX_END",
+                    "D;JEQ",
+                    // result += 1
+                    format!("@{}", result).as_str(),
+                    "M=M+1",
+                    // n++
+                    "@n",
+                    "M=M+1",
+                    // go to start of loop
+                    "@INCREMENT_INDEX_START",
+                    "0;JMP",
+                    "(INCREMENT_INDEX_END)",
+                    format!("@{}", result).as_str(),
+                    format!("A=M+{}", index_register).as_str(),
+                ]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>()
+            }
+            Self::Local(index) => ["@LCL", format!("A=M+{}", index).as_str()]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>(),
+
+            Self::Static(_index) => todo!("P177を参照して実装する"),
+            Self::Constant(value) => [format!("@{}", value).as_str()]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>(),
+
+            Self::This(index) => ["@THIS", format!("A=M+{}", index).as_str()]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>(),
+
+            Self::That(index) => ["@THAT", format!("A=M+{}", index).as_str()]
+                .iter()
+                .map(|c| c.to_string())
+                .collect::<Vec<String>>(),
+
+            Self::Pointer(_index) => todo!("P176を参照して実装する"),
+            Self::Temp(_index) => todo!("P176を参照して実装する"),
         }
+        .iter()
+        .map(|c| c.to_string())
+        .collect()
     }
 
     // そのセグメントのデータが格納されているレジスタ名を返す(AまたはD)
@@ -209,6 +270,20 @@ impl Segment {
         } else {
             "M".to_string()
         }
+    }
+
+    fn segment_name(&self) -> String {
+        match self {
+            Self::Argument(_) => "ARG",
+            Self::Local(_) => "LCL",
+            Self::Static(_) => "STATIC",
+            Self::Constant(_) => "CONST",
+            Self::This(_) => "THIS",
+            Self::That(_) => "THAT",
+            Self::Pointer(_) => "POINTER",
+            Self::Temp(_) => "TEMP",
+        }
+        .to_string()
     }
 }
 
