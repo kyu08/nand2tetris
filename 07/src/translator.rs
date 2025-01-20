@@ -16,6 +16,7 @@ impl VMProgram {
             let terms: Vec<&str> = trimmed.split_whitespace().collect();
 
             // NOTE: trimmed.is_empty()の場合は早期リターンしているのでunwrapしても問題ないはず
+            // TODO: Commandのメソッドとしたほうが凝集性高そう
             let command = match *terms.first().unwrap() {
                 "add" => Some(Command::Arithmetic(ArithmeticCommand::Add)),
                 "sub" => Some(Command::Arithmetic(ArithmeticCommand::Sub)),
@@ -53,13 +54,10 @@ impl VMProgram {
 
 impl std::fmt::Display for VMProgram {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // SPの初期化コマンド
-        let init_commands = ["@256", "D=A", "@SP", "M=D"].iter().map(|c| c.to_string()).collect();
-        let parsed_commands: Vec<String> = self.commands.iter().map(|c| c.to_string()).collect();
-        println!("{:?}", init_commands);
-        println!("{:?}", parsed_commands);
-        todo!("終了用の無限ループのコマンドを追加する");
-        write!(f, "{}", [init_commands, parsed_commands].concat().join("\n"))
+        let init_commands = ["@256", "D=A", "@SP", "M=D"].iter().map(|c| c.to_string()).collect(); // SPの初期化コマンド
+        let parsed_commands: Vec<String> = self.commands.iter().map(|c| c.to_string()).collect(); // プログラム本体
+        let shutdown_commands = ["(END)", "@END", "0;JMP"].iter().map(|c| c.to_string()).collect(); // 終了用の無限ループ
+        write!(f, "{}", [init_commands, parsed_commands, shutdown_commands].concat().join("\n"))
     }
 }
 
