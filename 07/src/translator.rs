@@ -5,6 +5,7 @@ pub struct VMProgram {
 }
 
 impl VMProgram {
+    // .vmファイルをparseする
     pub fn new(content: String) -> Self {
         let mut commands = vec![];
         for line in content.lines() {
@@ -50,14 +51,20 @@ impl VMProgram {
 
         Self { commands }
     }
-}
 
-impl std::fmt::Display for VMProgram {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn to_commands(&self) -> String {
         let init_commands = ["@256", "D=A", "@SP", "M=D"].iter().map(|c| c.to_string()).collect(); // SPの初期化コマンド
-        let parsed_commands: Vec<String> = self.commands.iter().map(|c| c.to_string()).collect(); // プログラム本体
+        let parsed_commands: Vec<String> = {
+            // プログラム本体
+            let mut result = vec![];
+            for command in &self.commands {
+                result.extend(command.to_commands())
+            }
+            result
+        };
         let shutdown_commands = ["(END)", "@END", "0;JMP"].iter().map(|c| c.to_string()).collect(); // 終了用の無限ループ
-        write!(f, "{}", [init_commands, parsed_commands, shutdown_commands].concat().join("\n"))
+                                                                                                    //
+        [init_commands, parsed_commands, shutdown_commands].concat().join("\n")
     }
 }
 
@@ -82,57 +89,62 @@ enum Command {
 }
 
 impl Command {
-    fn new(line: String) -> Self {
-        todo!("impl");
-    }
-}
+    // 機械語に翻訳するときにやること
+    // ## push
+    // 1. 値を取得
+    //    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
+    //    segment[index]の値を取得
+    // 2. 取得した値をstackにpush
 
-// 機械語に翻訳するときにやること
-// ## push
-// 1. 値を取得
-//    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
-//    segment[index]の値を取得
-// 2. 取得した値をstackにpush
-
-// ## pop
-// 1. 値を取得
-//    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
-//    segment[index]の値を取得
-// 2. 取得した値をstackにpush
-impl std::fmt::Display for Command {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let commands = match self {
-            Command::Push(segment) => {
+    // ## pop
+    // 1. 値を取得
+    //    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
+    //    segment[index]の値を取得
+    // 2. 取得した値をstackにpush
+    fn to_commands(&self) -> Vec<String> {
+        match self {
+            Command::Arithmetic(ArithmeticCommand::Add) => {
                 [
-                    format!("@{}", segment.clone().get_address()).as_str(),
-                    format!("D={}", segment.clone().get_value_register_name()).as_str(),
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(),
+                    Command::Pop(Segment::Argument(2)).to_commands(),
+                    // addする
+                    Segment::Argument(1).get_address_instructions(),
+                    ["D=M".to_string()].to_vec(),
+                    Segment::Argument(2).get_address_instructions(),
+                    [
+                        "D=D+M", "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1", // SPをインクリメント
+                    ]
+                    .map(|c| c.to_string())
+                    .to_vec(),
+                ]
+                .concat()
+                .to_vec()
+            }
+            Command::Push(segment) => [
+                segment.clone().get_address_instructions(),
+                [
+                    format!("D={}", segment.get_value_register_name()).as_str(),
                     "@SP",
                     "A=M",
-                    "M=D", // SPに値を格納
+                    "M=D",
                     "@SP",
-                    "M=M+1", // SPをインクリメント
+                    "M=M+1",
                 ]
                 .map(|c| c.to_string())
-                .to_vec()
-                .join("\n")
-            }
-            Command::Pop(segment) => {
-                [
-                    "@SP",
-                    "A=M",
-                    "D=M",
-                    format!("@{}", segment.clone().get_address()).as_str(),
-                    "M=D", // SPの値を指定されたセグメントに格納
-                    "@SP",
-                    "M=M-1", // SPをデクリメント
-                ]
-                .map(|c| c.to_string())
-                .to_vec()
-                .join("\n")
-            }
+                .to_vec(),
+            ]
+            .concat(),
+            Command::Pop(segment) => [
+                ["@SP", "A=M", "D=M"].map(|c| c.to_string()).to_vec(),
+                segment.get_address_instructions(),
+                ["M=D"].map(|c| c.to_string()).to_vec(),
+                ["@SP", "M=M-1"].map(|c| c.to_string()).to_vec(),
+            ]
+            .concat(),
             _ => todo!("not implemented"),
-        };
-        write!(f, "{}", commands)
+        }
     }
 }
 
@@ -147,13 +159,6 @@ enum ArithmeticCommand {
     And,
     Or,
     Not,
-}
-
-impl std::fmt::Display for ArithmeticCommand {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        todo!("impl");
-        // write!(f, "{}", self.to_string())
-    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -183,17 +188,17 @@ impl Segment {
         }
     }
 
-    // Segmentの実アドレスを返す
-    fn get_address(self) -> u32 {
+    // Segmentの実アドレスを返す命令群を返す
+    fn get_address_instructions(&self) -> Vec<String> {
         match self {
-            Self::Argument(index) => todo!("impl"),
-            Self::Local(index) => todo!("impl"),
-            Self::Static(index) => todo!("impl"),
-            Self::Constant(index) => index,
-            Self::This(index) => todo!("impl"),
-            Self::That(index) => todo!("impl"),
-            Self::Pointer(index) => todo!("impl"),
-            Self::Temp(index) => todo!("impl"),
+            Self::Argument(index) => vec!["@ARG".to_string(), format!("A=M+{}", index)],
+            Self::Local(index) => vec!["@LCL".to_string(), format!("A=M+{}", index)],
+            Self::Static(index) => todo!("P177を参照して実装する"),
+            Self::Constant(value) => vec![format!("@{}", value)],
+            Self::This(index) => vec!["@THIS".to_string(), format!("A=M+{}", index)],
+            Self::That(index) => vec!["@THAT".to_string(), format!("A=M+{}", index)],
+            Self::Pointer(index) => todo!("P176を参照して実装する"),
+            Self::Temp(index) => todo!("P176を参照して実装する"),
         }
     }
 
