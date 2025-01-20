@@ -53,17 +53,23 @@ impl VMProgram {
     }
 
     pub fn to_commands(&self) -> String {
-        let init_commands = ["@256", "D=A", "@SP", "M=D"].iter().map(|c| c.to_string()).collect(); // SPの初期化コマンド
+        let init_commands = ["// init", "@256", "D=A", "@SP", "M=D"]
+            .iter()
+            .map(|c| c.to_string())
+            .collect(); // SPの初期化コマンド
         let parsed_commands: Vec<String> = {
             // プログラム本体
-            let mut result = vec![];
+            let mut result = vec!["// body".to_string()];
             for command in &self.commands {
                 result.extend(command.to_commands())
             }
             result
         };
-        let shutdown_commands = ["(END)", "@END", "0;JMP"].iter().map(|c| c.to_string()).collect(); // 終了用の無限ループ
-                                                                                                    //
+        let shutdown_commands = ["// end", "(END)", "@END", "0;JMP"]
+            .iter()
+            .map(|c| c.to_string())
+            .collect(); // 終了用の無限ループ
+                        //
         [init_commands, parsed_commands, shutdown_commands].concat().join("\n")
     }
 }
@@ -105,6 +111,7 @@ impl Command {
         match self {
             Command::Arithmetic(ArithmeticCommand::Add) => {
                 [
+                    ["// add".to_string()].to_vec(),
                     // 先頭2つの値をpopする
                     Command::Pop(Segment::Argument(1)).to_commands(),
                     Command::Pop(Segment::Argument(2)).to_commands(),
@@ -123,6 +130,7 @@ impl Command {
                 .to_vec()
             }
             Command::Push(segment) => [
+                ["// push".to_string()].to_vec(),
                 segment.clone().get_address_instructions(),
                 [
                     format!("D={}", segment.get_value_register_name()).as_str(),
@@ -137,9 +145,9 @@ impl Command {
             ]
             .concat(),
             Command::Pop(segment) => [
-                ["@SP", "A=M", "D=M"].map(|c| c.to_string()).to_vec(),
-                segment.get_address_instructions(),
-                ["M=D"].map(|c| c.to_string()).to_vec(),
+                ["// pop", "@SP", "A=M", "D=M", "M=0"].map(|c| c.to_string()).to_vec(), // RAM[SP]の値をDに格納しMを初期化
+                segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまう)
+                ["M=D"].map(|c| c.to_string()).to_vec(), // L34
                 ["@SP", "M=M-1"].map(|c| c.to_string()).to_vec(),
             ]
             .concat(),
@@ -190,45 +198,14 @@ impl Segment {
 
     // Segmentの実アドレスを返す命令群を返す
     fn get_address_instructions(&self) -> Vec<String> {
-        // FIXME: 動的に変える
-        let suffix = "000";
         match self {
-            // ALUには+1しか定義されていないので工夫する必要がある（ループでindex回インクリメントする）
             Self::Argument(index) => {
-                let result = format!("result_{}", suffix);
-                let index_register = format!("index_{}", suffix);
-                vec![
-                    // @ARGの値にindexをインクリメントする(index回ループを回して+1していく)
-                    "@n", // ループ制御変数
-                    "M=0",
-                    format!("@{}", index).as_str(),
-                    "D=M",
-                    format!("@{}", index_register).as_str(), // index_register: indexの値を保持するレジスタ
-                    "M=D",
+                [
+                    format!("// argument {}", index).as_str(),
                     format!("@{}", self.segment_name()).as_str(),
-                    "D=M",
-                    format!("@{}", result).as_str(), // resultを初期化
-                    "M=D",
-                    "(INCREMENT_INDEX_START)",
-                    // if n == index_register then goto end of loop
-                    "@n",
-                    "D=M",
-                    format!("@{}", index_register).as_str(),
-                    "D=D-M",
-                    "@INCREMENT_INDEX_END",
-                    "D;JEQ",
-                    // result += 1
-                    format!("@{}", result).as_str(),
-                    "M=M+1",
-                    // n++
-                    "@n",
-                    "M=M+1",
-                    // go to start of loop
-                    "@INCREMENT_INDEX_START",
-                    "0;JMP",
-                    "(INCREMENT_INDEX_END)",
-                    format!("@{}", result).as_str(),
-                    format!("A=M+{}", index_register).as_str(),
+                    "D=A",                          // Dにベースアドレスを格納
+                    format!("@{}", index).as_str(), // indexを定数として宣言
+                    "A=D+A",                        // base + indexの値をAに格納
                 ]
                 .iter()
                 .map(|c| c.to_string())
