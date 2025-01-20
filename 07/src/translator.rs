@@ -111,28 +111,28 @@ impl Command {
         match self {
             Command::Arithmetic(ArithmeticCommand::Add) => {
                 [
-                    ["// add".to_string()].to_vec(),
+                    vec!["// add".to_string()],
                     // 先頭2つの値をpopする
                     Command::Pop(Segment::Argument(1)).to_commands(),
                     Command::Pop(Segment::Argument(2)).to_commands(),
                     // addする
                     Segment::Argument(1).get_address_instructions(),
-                    ["D=M".to_string()].to_vec(),
+                    vec!["D=M".to_string()],
                     Segment::Argument(2).get_address_instructions(),
                     [
                         "D=D+M", "@SP", "A=M", "M=D", // 結果をpushする
-                        "@SP", "M=M+1", // SPをインクリメント
+                        "@SP", "M=M+1",
                     ]
+                    .iter()
                     .map(|c| c.to_string())
-                    .to_vec(),
+                    .collect(),
                 ]
                 .concat()
-                .to_vec()
             }
             Command::Push(segment) => [
-                ["// push".to_string()].to_vec(),
+                vec!["// push".to_string()],
                 segment.clone().get_address_instructions(),
-                [
+                vec![
                     format!("D={}", segment.get_value_register_name()).as_str(),
                     "@SP",
                     "A=M",
@@ -140,15 +140,19 @@ impl Command {
                     "@SP",
                     "M=M+1",
                 ]
+                .into_iter()
                 .map(|c| c.to_string())
-                .to_vec(),
+                .collect(),
             ]
             .concat(),
             Command::Pop(segment) => [
-                ["// pop", "@SP", "A=M", "D=M", "M=0"].map(|c| c.to_string()).to_vec(), // RAM[SP]の値をDに格納しMを初期化
-                segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまう)
-                ["M=D"].map(|c| c.to_string()).to_vec(), // L34
-                ["@SP", "M=M-1"].map(|c| c.to_string()).to_vec(),
+                vec!["// pop", "@SP", "A=M-1", "D=M", "M=0"]
+                    .into_iter()
+                    .map(|c| c.to_string())
+                    .collect(), // RAM[SP]の値をDに格納しMを初期化
+                segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまうので注意)
+                vec!["M=D"].into_iter().map(|c| c.to_string()).collect(), // L34
+                vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
             ]
             .concat(),
             _ => todo!("not implemented"),
@@ -197,16 +201,17 @@ impl Segment {
     }
 
     // Segmentの実アドレスを返す命令群を返す
+    // TODO: ARG1,2に格納できていない
     fn get_address_instructions(&self) -> Vec<String> {
         match self {
             Self::Argument(index) => {
+                // format!("@{}", index).as_str(), "A=D+A" のようにすれば対象のアドレスを取得できるが意図的にA=A+1の繰り返しで処理している。
+                // Dレジスタを使ってしまうとpopの処理時にSPの値を記憶しておくことができなくなってしまうため。
                 [
-                    format!("// argument {}", index).as_str(),
-                    format!("@{}", self.segment_name()).as_str(),
-                    "D=A",                          // Dにベースアドレスを格納
-                    format!("@{}", index).as_str(), // indexを定数として宣言
-                    "A=D+A",                        // base + indexの値をAに格納
+                    vec![format!("// argument {}", index), format!("@{}", self.segment_name())],
+                    vec!["A=A+1".to_string(); *index as usize],
                 ]
+                .concat()
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>()
