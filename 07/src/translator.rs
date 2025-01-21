@@ -492,41 +492,60 @@ impl Segment {
     // Segmentの実アドレスを返す命令群を返す
     fn get_address_instructions(&self, file_name: &str) -> Vec<String> {
         match self {
+            // TODO: index == 0のときは何もしない
             Self::Argument(index) => {
                 // format!("@{}", index).as_str(), "A=D+A" のようにすれば対象のアドレスを取得できるが意図的にA=A+1の繰り返しで処理している。
                 // Dレジスタを使ってしまうとpopの処理時にSPの値を記憶しておくことができなくなってしまうため。
                 [
-                    vec![format!("// argument {}", index), format!("@{}", self.segment_name())],
-                    vec!["A=A+1".to_string(); *index as usize],
+                    vec![format!("// argument {}", index).as_str(), "@2"],
+                    vec!["A=A+1"; *index as usize],
                 ]
                 .concat()
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>()
             }
-            Self::Local(index) => ["@LCL", format!("A=M+{}", index).as_str()]
-                .iter()
+            Self::Local(index) => [vec!["@1"], vec!["A=A+1"; *index as usize]]
+                .concat()
+                .into_iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-
             Self::Static(index) => vec![format!("@{}.{}", file_name, index)],
             Self::Constant(value) => [format!("@{}", value).as_str()]
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
 
-            Self::This(index) => ["@THIS", format!("A=M+{}", index).as_str()]
-                .iter()
+            Self::This(index) => [vec!["@3"], vec!["A=A+1"; *index as usize]]
+                .concat()
+                .into_iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-
-            Self::That(index) => ["@THAT", format!("A=M+{}", index).as_str()]
-                .iter()
+            Self::That(index) => [vec!["@4"], vec!["A=A+1"; *index as usize]]
+                .concat()
+                .into_iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-
-            Self::Pointer(_index) => todo!("P176を参照して実装する"),
-            Self::Temp(_index) => todo!("P176を参照して実装する"),
+            Self::Pointer(index) => {
+                if *index == 0 {
+                    vec!["@3".to_string()]
+                } else if *index == 1 {
+                    vec!["@4".to_string()]
+                } else {
+                    vec![]
+                }
+            }
+            Self::Temp(index) => {
+                if 8 < *index {
+                    vec![]
+                } else {
+                    [vec!["@5"], vec!["A=A+1"; *index as usize]]
+                        .concat()
+                        .into_iter()
+                        .map(|c| c.to_string())
+                        .collect::<Vec<String>>()
+                }
+            }
         }
         .iter()
         .map(|c| c.to_string())
@@ -540,20 +559,6 @@ impl Segment {
         } else {
             "M".to_string()
         }
-    }
-
-    fn segment_name(&self) -> String {
-        match self {
-            Self::Argument(_) => "ARG",
-            Self::Local(_) => "LCL",
-            Self::Static(_) => "STATIC",
-            Self::Constant(_) => "CONST",
-            Self::This(_) => "THIS",
-            Self::That(_) => "THAT",
-            Self::Pointer(_) => "POINTER",
-            Self::Temp(_) => "TEMP",
-        }
-        .to_string()
     }
 }
 
