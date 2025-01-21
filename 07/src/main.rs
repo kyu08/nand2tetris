@@ -18,7 +18,7 @@ fn main() {
         source_file_path.with_extension("asm")
     };
 
-    let vm_program = parse(source_file_path);
+    let mut vm_program = parse(source_file_path);
     let machine_language = vm_program.to_commands();
     let _ = std::fs::write(output_file_path, &machine_language);
 }

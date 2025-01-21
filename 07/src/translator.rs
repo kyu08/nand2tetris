@@ -2,6 +2,7 @@
 #[derive(PartialEq, Eq, Debug)]
 pub struct VMProgram {
     commands: Vec<Command>,
+    label_id: u32, // 処理ごとにラベルを一意にしたいケースにsuffixとして利用する値
 }
 
 impl VMProgram {
@@ -49,10 +50,10 @@ impl VMProgram {
             }
         }
 
-        Self { commands }
+        Self { commands, label_id: 0 }
     }
 
-    pub fn to_commands(&self) -> String {
+    pub fn to_commands(&mut self) -> String {
         let init_commands = ["// init", "@256", "D=A", "@SP", "M=D"]
             .iter()
             .map(|c| c.to_string())
@@ -60,8 +61,12 @@ impl VMProgram {
         let parsed_commands: Vec<String> = {
             // プログラム本体
             let mut result = vec!["// body".to_string()];
-            for command in &self.commands {
-                result.extend(command.to_commands())
+            for command in &self.commands.clone() {
+                let (a, should_increment_label_number) = command.to_commands(self.label_id);
+                result.extend(a);
+                if should_increment_label_number {
+                    self.increment_label_id();
+                }
             }
             result
         };
@@ -72,9 +77,13 @@ impl VMProgram {
                         //
         [init_commands, parsed_commands, shutdown_commands].concat().join("\n")
     }
+
+    fn increment_label_id(&mut self) {
+        self.label_id += 1
+    }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 enum Command {
     Arithmetic(ArithmeticCommand),
     Push(Segment),
@@ -107,15 +116,15 @@ impl Command {
     //    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
     //    segment[index]の値を取得
     // 2. 取得した値をstackにpush
-    fn to_commands(&self) -> Vec<String> {
+    fn to_commands(&self, label_suffix: u32) -> (Vec<String>, bool) {
         match self {
             Command::Arithmetic(ArithmeticCommand::Add) => {
-                [
-                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx+yを行う
+                let commands = [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx+yの結果を返す
                     vec!["// add".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(),
-                    Command::Pop(Segment::Argument(2)).to_commands(),
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0,
                     Segment::Argument(2).get_address_instructions(), // x
                     vec!["D=M".to_string()],                         // Dにxを格納
                     Segment::Argument(1).get_address_instructions(), // y
@@ -124,66 +133,190 @@ impl Command {
                         // P89 図4-5 に定義されている命令セットに厳密に従いたいのでこうしている。
                         // (D&Mは定義されているがM&Dは定義されていないのでMの前にDにが来るような順番で統一したい)
                         "D=D+M", // add
-                        "@SP", "A=M", "M=D", // 結果をpushする
-                        "@SP", "M=M+1",
+                        // 結果をpushする
+                        "@SP", "A=M", "M=D", "@SP", "M=M+1",
                     ]
                     .iter()
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
             // TODO: 他のArithmeticCommandをすべて実装する
             Command::Arithmetic(ArithmeticCommand::Sub) => {
-                [
-                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx-yを行う
+                let commands = [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx-yの結果を返す
                     vec!["// sub".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(), // y
-                    Command::Pop(Segment::Argument(2)).to_commands(), // x
-                    Segment::Argument(2).get_address_instructions(),  // x
-                    vec!["D=M".to_string()],                          // Dにxを格納
-                    Segment::Argument(1).get_address_instructions(),  // y
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dにxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
                     [
                         "D=D-M", // sub
-                        "@SP", "A=M", "M=D", // 結果をpushする
-                        "@SP", "M=M+1",
+                        // 結果をpushする
+                        "@SP", "A=M", "M=D", "@SP", "M=M+1",
                     ]
                     .iter()
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
             Command::Arithmetic(ArithmeticCommand::Neg) => {
-                [
+                let commands = [
+                    // !x
                     vec!["// neg".to_string()],
-                    Command::Pop(Segment::Argument(1)).to_commands(),
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
                     Segment::Argument(1).get_address_instructions(),
                     [
                         "D=-M", // neg
-                        "@SP", "A=M", "M=D", // 結果をpushする
-                        "@SP", "M=M+1",
+                        // 結果をpushする
+                        "@SP", "A=M", "M=D", "@SP", "M=M+1",
                     ]
                     .iter()
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
-            Command::Arithmetic(ArithmeticCommand::Eq) => todo!(),
-            Command::Arithmetic(ArithmeticCommand::Gt) => todo!(),
-            Command::Arithmetic(ArithmeticCommand::Lt) => todo!(),
+            Command::Arithmetic(ArithmeticCommand::Eq) => {
+                // x: RAM[SP-2], y: RAM[SP-1]としたときのx==yの結果を返す
+                let true_label = format!("TRUE_{:05}", label_suffix);
+                let false_label = format!("FALSE_{:05}", label_suffix);
+                let end_if_label = format!("END_IF_{:05}", label_suffix);
+                let commands = [
+                    // NOTE: x == yを実現するために以下の判定を行う。
+                    // x-y == 0のときはTRUE_suffixラベルに、x-y != 0のときはFALSE_suffixラベルに
+                    // 移動する。それぞれのラベルの末尾でEND_suffixラベルに移動することで条件分岐を実現する
+                    vec!["// eq".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
+                    [
+                        "D=D-M", // x-y
+                        format!("@{}", true_label).as_str(),
+                        "D;JEQ",
+                        // x != yの場合
+                        format!("({})", false_label).as_str(),
+                        "D=0",
+                        format!("@{}", end_if_label).as_str(),
+                        "0;JMP",
+                        // x == yの場合
+                        format!("({})", true_label).as_str(),
+                        "D=-1",
+                        format!("({})", end_if_label).as_str(),
+                        // 結果をpushする
+                        "@SP",
+                        "A=M",
+                        "M=D",
+                        "@SP",
+                        "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat();
+                (commands, true)
+            }
+            Command::Arithmetic(ArithmeticCommand::Gt) => {
+                // x: RAM[SP-2], y: RAM[SP-1]としたときのx>yの結果を返す
+                let true_label = format!("TRUE_{:05}", label_suffix);
+                let false_label = format!("FALSE_{:05}", label_suffix);
+                let end_if_label = format!("END_IF_{:05}", label_suffix);
+                let commands = [
+                    vec!["// gt".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
+                    [
+                        "D=D-M", // x-y
+                        format!("@{}", true_label).as_str(),
+                        "D;JGT",
+                        // x <= yの場合
+                        format!("({})", false_label).as_str(),
+                        "D=0",
+                        format!("@{}", end_if_label).as_str(),
+                        "0;JMP",
+                        // x > yの場合
+                        format!("({})", true_label).as_str(),
+                        "D=-1",
+                        format!("({})", end_if_label).as_str(),
+                        // 結果をpushする
+                        "@SP",
+                        "A=M",
+                        "M=D",
+                        "@SP",
+                        "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat();
+                (commands, true)
+            }
+            Command::Arithmetic(ArithmeticCommand::Lt) => {
+                // x: RAM[SP-2], y: RAM[SP-1]としたときのx<yの結果を返す
+                let true_label = format!("TRUE_{:05}", label_suffix);
+                let false_label = format!("FALSE_{:05}", label_suffix);
+                let end_if_label = format!("END_IF_{:05}", label_suffix);
+                let commands = [
+                    vec!["// lt".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
+                    [
+                        "D=D-M", // x-y
+                        format!("@{}", true_label).as_str(),
+                        "D;JLT",
+                        // x >= yの場合
+                        format!("({})", false_label).as_str(),
+                        "D=0",
+                        format!("@{}", end_if_label).as_str(),
+                        "0;JMP",
+                        // x < yの場合
+                        format!("({})", true_label).as_str(),
+                        "D=-1",
+                        format!("({})", end_if_label).as_str(),
+                        // 結果をpushする
+                        "@SP",
+                        "A=M",
+                        "M=D",
+                        "@SP",
+                        "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat();
+                (commands, true)
+            }
             Command::Arithmetic(ArithmeticCommand::And) => {
-                [
+                let commands = [
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
                     vec!["// and".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(), // y
-                    Command::Pop(Segment::Argument(2)).to_commands(), // x
-                    Segment::Argument(2).get_address_instructions(),  // x
-                    vec!["D=M".to_string()],                          // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),  // y
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
                     [
                         "D=D&M", // and
                         "@SP", "A=M", "M=D", // 結果をpushする
@@ -193,18 +326,19 @@ impl Command {
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
             Command::Arithmetic(ArithmeticCommand::Or) => {
-                [
+                let commands = [
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
                     vec!["// or".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(), // y
-                    Command::Pop(Segment::Argument(2)).to_commands(), // x
-                    Segment::Argument(2).get_address_instructions(),  // x
-                    vec!["D=M".to_string()],                          // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),  // y
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
+                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
+                    Segment::Argument(2).get_address_instructions(),                // x
+                    vec!["D=M".to_string()],                                        // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),                // y
                     [
                         "D=D|M", // or
                         "@SP", "A=M", "M=D", // 結果をpushする
@@ -214,13 +348,14 @@ impl Command {
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
             Command::Arithmetic(ArithmeticCommand::Not) => {
-                [
+                let commands = [
                     vec!["// not".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(),
+                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
                     Segment::Argument(1).get_address_instructions(),
                     [
                         "D=!M", // not
@@ -231,34 +366,41 @@ impl Command {
                     .map(|c| c.to_string())
                     .collect(),
                 ]
-                .concat()
+                .concat();
+                (commands, false)
             }
-            Command::Push(segment) => [
-                vec!["// push".to_string()],
-                segment.clone().get_address_instructions(),
-                vec![
-                    format!("D={}", segment.get_value_register_name()).as_str(),
-                    "@SP",
-                    "A=M",
-                    "M=D",
-                    "@SP",
-                    "M=M+1",
-                ]
-                .into_iter()
-                .map(|c| c.to_string())
-                .collect(),
-            ]
-            .concat(),
-            Command::Pop(segment) => [
-                vec!["// pop", "@SP", "A=M-1", "D=M", "M=0"]
+            Command::Push(segment) => {
+                let commands = [
+                    vec!["// push".to_string()],
+                    segment.clone().get_address_instructions(),
+                    vec![
+                        format!("D={}", segment.get_value_register_name()).as_str(),
+                        "@SP",
+                        "A=M",
+                        "M=D",
+                        "@SP",
+                        "M=M+1",
+                    ]
                     .into_iter()
                     .map(|c| c.to_string())
-                    .collect(), // RAM[SP]の値をDに格納しMを初期化
-                segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまうので注意)
-                vec!["M=D"].into_iter().map(|c| c.to_string()).collect(), // L34
-                vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
-            ]
-            .concat(),
+                    .collect(),
+                ]
+                .concat();
+                (commands, false)
+            }
+            Command::Pop(segment) => {
+                let commands = [
+                    vec!["// pop", "@SP", "A=M-1", "D=M", "M=0"]
+                        .into_iter()
+                        .map(|c| c.to_string())
+                        .collect(), // RAM[SP]の値をDに格納しMを初期化
+                    segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまうので注意)
+                    vec!["M=D"].into_iter().map(|c| c.to_string()).collect(), // L34
+                    vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
+                ]
+                .concat();
+                (commands, false)
+            }
             Command::Label => todo!(),
             Command::GoTo => todo!(),
             Command::If => todo!(),
@@ -269,7 +411,7 @@ impl Command {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 enum ArithmeticCommand {
     Add,
     Sub,
@@ -310,7 +452,6 @@ impl Segment {
     }
 
     // Segmentの実アドレスを返す命令群を返す
-    // TODO: ARG1,2に格納できていない
     fn get_address_instructions(&self) -> Vec<String> {
         match self {
             Self::Argument(index) => {
@@ -450,7 +591,8 @@ add
                     Command::Arithmetic(ArithmeticCommand::Sub),
                     Command::Push(Segment::Temp(6)),
                     Command::Arithmetic(ArithmeticCommand::Add),
-                ]
+                ],
+                label_id: 0,
             }
         );
     }

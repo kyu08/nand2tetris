@@ -1,6 +1,6 @@
 ## TODO
 - [x] `StackArithmetic/SimpleAdd`
-- [ ] `StackArithmetic/StackTest`
+- [x] `StackArithmetic/StackTest`
 - [ ] `MemoryAccess/BasicTest`
 - [ ] `MemoryAccess/PointerTest`
 - [ ] `MemoryAccess/StaticTest`
