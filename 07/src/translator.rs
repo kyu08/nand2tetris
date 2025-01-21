@@ -2,12 +2,13 @@
 #[derive(PartialEq, Eq, Debug)]
 pub struct VMProgram {
     commands: Vec<Command>,
-    label_id: u32, // 処理ごとにラベルを一意にしたいケースにsuffixとして利用する値
+    label_id: u32,     // 処理ごとにラベルを一意にしたいケースにsuffixとして利用する値
+    file_name: String, // staticセグメントを機械語に変換する際に必要。`Foo.vm`で`static i`への参照があったとき`Foo.i`というシンボルを生成する。
 }
 
 impl VMProgram {
     // .vmファイルをparseする
-    pub fn new(content: String) -> Self {
+    pub fn new(file_name: String, content: String) -> Self {
         let mut commands = vec![];
         for line in content.lines() {
             let trimmed = line.trim();
@@ -50,10 +51,15 @@ impl VMProgram {
             }
         }
 
-        Self { commands, label_id: 0 }
+        Self {
+            commands,
+            label_id: 0,
+            file_name,
+        }
     }
 
-    pub fn to_commands(&mut self) -> String {
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_hack_assembly(&mut self) -> String {
         let init_commands = ["// init", "@256", "D=A", "@SP", "M=D"]
             .iter()
             .map(|c| c.to_string())
@@ -62,7 +68,7 @@ impl VMProgram {
             // プログラム本体
             let mut result = vec!["// body".to_string()];
             for command in &self.commands.clone() {
-                let (a, should_increment_label_number) = command.to_commands(self.label_id);
+                let (a, should_increment_label_number) = command.to_commands(self.label_id, &self.file_name);
                 result.extend(a);
                 if should_increment_label_number {
                     self.increment_label_id();
@@ -116,18 +122,22 @@ impl Command {
     //    segment[index]のメモリアドレスを解決(segmentのメモリアドレス + index)
     //    segment[index]の値を取得
     // 2. 取得した値をstackにpush
-    fn to_commands(&self, label_suffix: u32) -> (Vec<String>, bool) {
+    fn to_commands(&self, label_suffix: u32, file_name: &str) -> (Vec<String>, bool) {
         match self {
             Command::Arithmetic(ArithmeticCommand::Add) => {
                 let commands = [
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx+yの結果を返す
                     vec!["// add".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0,
-                    Segment::Argument(2).get_address_instructions(), // x
-                    vec!["D=M".to_string()],                         // Dにxを格納
-                    Segment::Argument(1).get_address_instructions(), // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0,
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0,
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dにxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         // NOTE: 計算の順序をM+DではなくD+Mにしたいので先にxをDに格納している。
                         // P89 図4-5 に定義されている命令セットに厳密に従いたいのでこうしている。
@@ -149,11 +159,15 @@ impl Command {
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx-yの結果を返す
                     vec!["// sub".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dにxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dにxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D-M", // sub
                         // 結果をpushする
@@ -170,8 +184,10 @@ impl Command {
                 let commands = [
                     // !x
                     vec!["// neg".to_string()],
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
-                    Segment::Argument(1).get_address_instructions(),
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0,
+                    Segment::Argument(1).get_address_instructions(file_name),
                     [
                         "D=-M", // neg
                         // 結果をpushする
@@ -195,11 +211,15 @@ impl Command {
                     // 移動する。それぞれのラベルの末尾でEND_suffixラベルに移動することで条件分岐を実現する
                     vec!["// eq".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D-M", // x-y
                         format!("@{}", true_label).as_str(),
@@ -235,11 +255,15 @@ impl Command {
                 let commands = [
                     vec!["// gt".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D-M", // x-y
                         format!("@{}", true_label).as_str(),
@@ -275,11 +299,15 @@ impl Command {
                 let commands = [
                     vec!["// lt".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D-M", // x-y
                         format!("@{}", true_label).as_str(),
@@ -312,11 +340,15 @@ impl Command {
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
                     vec!["// and".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D&M", // and
                         "@SP", "A=M", "M=D", // 結果をpushする
@@ -334,11 +366,15 @@ impl Command {
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
                     vec!["// or".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0, // y
-                    Command::Pop(Segment::Argument(2)).to_commands(label_suffix).0, // x
-                    Segment::Argument(2).get_address_instructions(),                // x
-                    vec!["D=M".to_string()],                                        // Dをxを格納
-                    Segment::Argument(1).get_address_instructions(),                // y
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0, // y
+                    Command::Pop(Segment::Argument(2))
+                        .to_commands(label_suffix, file_name)
+                        .0, // x
+                    Segment::Argument(2).get_address_instructions(file_name), // x
+                    vec!["D=M".to_string()],                                  // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(file_name), // y
                     [
                         "D=D|M", // or
                         "@SP", "A=M", "M=D", // 結果をpushする
@@ -355,8 +391,10 @@ impl Command {
                 let commands = [
                     vec!["// not".to_string()],
                     // 先頭2つの値をpopする
-                    Command::Pop(Segment::Argument(1)).to_commands(label_suffix).0,
-                    Segment::Argument(1).get_address_instructions(),
+                    Command::Pop(Segment::Argument(1))
+                        .to_commands(label_suffix, file_name)
+                        .0,
+                    Segment::Argument(1).get_address_instructions(file_name),
                     [
                         "D=!M", // not
                         "@SP", "A=M", "M=D", // 結果をpushする
@@ -372,7 +410,7 @@ impl Command {
             Command::Push(segment) => {
                 let commands = [
                     vec!["// push".to_string()],
-                    segment.clone().get_address_instructions(),
+                    segment.clone().get_address_instructions(file_name),
                     vec![
                         format!("D={}", segment.get_value_register_name()).as_str(),
                         "@SP",
@@ -394,7 +432,7 @@ impl Command {
                         .into_iter()
                         .map(|c| c.to_string())
                         .collect(), // RAM[SP]の値をDに格納しMを初期化
-                    segment.get_address_instructions(), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまうので注意)
+                    segment.get_address_instructions(file_name), // Aにpopのdescを設定(ここでDを使うのでRAM[SP]の値が消えてしまうので注意)
                     vec!["M=D"].into_iter().map(|c| c.to_string()).collect(), // L34
                     vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
                 ]
@@ -452,7 +490,7 @@ impl Segment {
     }
 
     // Segmentの実アドレスを返す命令群を返す
-    fn get_address_instructions(&self) -> Vec<String> {
+    fn get_address_instructions(&self, file_name: &str) -> Vec<String> {
         match self {
             Self::Argument(index) => {
                 // format!("@{}", index).as_str(), "A=D+A" のようにすれば対象のアドレスを取得できるが意図的にA=A+1の繰り返しで処理している。
@@ -471,7 +509,7 @@ impl Segment {
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
 
-            Self::Static(_index) => todo!("P177を参照して実装する"),
+            Self::Static(index) => vec![format!("@{}.{}", file_name, index)],
             Self::Constant(value) => [format!("@{}", value).as_str()]
                 .iter()
                 .map(|c| c.to_string())
@@ -562,7 +600,8 @@ sub
 push temp 6
 add
                 "#
-                .to_string()
+                .to_string(),
+                "foo".to_string(),
             ),
             VMProgram {
                 commands: vec![
@@ -593,6 +632,7 @@ add
                     Command::Arithmetic(ArithmeticCommand::Add),
                 ],
                 label_id: 0,
+                file_name: "foo".to_string(),
             }
         );
     }

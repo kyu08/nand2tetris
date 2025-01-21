@@ -18,15 +18,16 @@ fn main() {
         source_file_path.with_extension("asm")
     };
 
-    let mut vm_program = parse(source_file_path);
-    let machine_language = vm_program.to_commands();
+    let file_name = source_file_path.file_stem().unwrap().to_string_lossy().to_string();
+    let mut vm_program = parse(source_file_path.clone(), file_name);
+    let machine_language = vm_program.to_hack_assembly();
     let _ = std::fs::write(output_file_path, &machine_language);
 }
 
 // 任意のpathを渡せるようにしておくとUTが書きやすいので切り出しておく
-fn parse(path: PathBuf) -> translator::VMProgram {
+fn parse(path: PathBuf, file_name: String) -> translator::VMProgram {
     let content = std::fs::read_to_string(path.clone()).expect("Failed to read file");
-    translator::VMProgram::new(content)
+    translator::VMProgram::new(file_name, content)
 }
 
 // #[cfg(test)]
