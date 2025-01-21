@@ -111,16 +111,120 @@ impl Command {
         match self {
             Command::Arithmetic(ArithmeticCommand::Add) => {
                 [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx+yを行う
                     vec!["// add".to_string()],
                     // 先頭2つの値をpopする
                     Command::Pop(Segment::Argument(1)).to_commands(),
                     Command::Pop(Segment::Argument(2)).to_commands(),
-                    // addする
-                    Segment::Argument(1).get_address_instructions(),
-                    vec!["D=M".to_string()],
-                    Segment::Argument(2).get_address_instructions(),
+                    Segment::Argument(2).get_address_instructions(), // x
+                    vec!["D=M".to_string()],                         // Dにxを格納
+                    Segment::Argument(1).get_address_instructions(), // y
                     [
-                        "D=D+M", "@SP", "A=M", "M=D", // 結果をpushする
+                        // NOTE: 計算の順序をM+DではなくD+Mにしたいので先にxをDに格納している。
+                        // P89 図4-5 に定義されている命令セットに厳密に従いたいのでこうしている。
+                        // (D&Mは定義されているがM&Dは定義されていないのでMの前にDにが来るような順番で統一したい)
+                        "D=D+M", // add
+                        "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat()
+            }
+            // TODO: 他のArithmeticCommandをすべて実装する
+            Command::Arithmetic(ArithmeticCommand::Sub) => {
+                [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx-yを行う
+                    vec!["// sub".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(), // y
+                    Command::Pop(Segment::Argument(2)).to_commands(), // x
+                    Segment::Argument(2).get_address_instructions(),  // x
+                    vec!["D=M".to_string()],                          // Dにxを格納
+                    Segment::Argument(1).get_address_instructions(),  // y
+                    [
+                        "D=D-M", // sub
+                        "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat()
+            }
+            Command::Arithmetic(ArithmeticCommand::Neg) => {
+                [
+                    vec!["// neg".to_string()],
+                    Command::Pop(Segment::Argument(1)).to_commands(),
+                    Segment::Argument(1).get_address_instructions(),
+                    [
+                        "D=-M", // neg
+                        "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat()
+            }
+            Command::Arithmetic(ArithmeticCommand::Eq) => todo!(),
+            Command::Arithmetic(ArithmeticCommand::Gt) => todo!(),
+            Command::Arithmetic(ArithmeticCommand::Lt) => todo!(),
+            Command::Arithmetic(ArithmeticCommand::And) => {
+                [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
+                    vec!["// and".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(), // y
+                    Command::Pop(Segment::Argument(2)).to_commands(), // x
+                    Segment::Argument(2).get_address_instructions(),  // x
+                    vec!["D=M".to_string()],                          // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),  // y
+                    [
+                        "D=D&M", // and
+                        "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat()
+            }
+            Command::Arithmetic(ArithmeticCommand::Or) => {
+                [
+                    // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yを行う
+                    vec!["// or".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(), // y
+                    Command::Pop(Segment::Argument(2)).to_commands(), // x
+                    Segment::Argument(2).get_address_instructions(),  // x
+                    vec!["D=M".to_string()],                          // Dをxを格納
+                    Segment::Argument(1).get_address_instructions(),  // y
+                    [
+                        "D=D|M", // or
+                        "@SP", "A=M", "M=D", // 結果をpushする
+                        "@SP", "M=M+1",
+                    ]
+                    .iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat()
+            }
+            Command::Arithmetic(ArithmeticCommand::Not) => {
+                [
+                    vec!["// not".to_string()],
+                    // 先頭2つの値をpopする
+                    Command::Pop(Segment::Argument(1)).to_commands(),
+                    Segment::Argument(1).get_address_instructions(),
+                    [
+                        "D=!M", // not
+                        "@SP", "A=M", "M=D", // 結果をpushする
                         "@SP", "M=M+1",
                     ]
                     .iter()
@@ -155,7 +259,12 @@ impl Command {
                 vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
             ]
             .concat(),
-            _ => todo!("not implemented"),
+            Command::Label => todo!(),
+            Command::GoTo => todo!(),
+            Command::If => todo!(),
+            Command::Function => todo!(),
+            Command::Return => todo!(),
+            Command::Call => todo!(),
         }
     }
 }
