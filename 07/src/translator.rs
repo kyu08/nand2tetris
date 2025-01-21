@@ -491,6 +491,7 @@ impl Segment {
 
     // Segmentの実アドレスを返す命令群を返す
     fn get_address_instructions(&self, file_name: &str) -> Vec<String> {
+        // FIXME: SPの値がズレているのを修正する
         match self {
             Self::Argument(index) => {
                 // format!("@{}", index).as_str(), "A=D+A" のようにすれば対象のアドレスを取得できるが意図的にA=A+1の繰り返しで処理している。
@@ -505,7 +506,7 @@ impl Segment {
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>()
             }
-            Self::Local(index) => [vec!["@1"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
+            Self::Local(index) => [vec!["@1", "D=M"], vec!["D=D+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
@@ -515,13 +516,12 @@ impl Segment {
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-
-            Self::This(index) => [vec!["@3"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
+            Self::This(index) => [vec!["@3", "D=M"], vec!["D=D+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-            Self::That(index) => [vec!["@4"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
+            Self::That(index) => [vec!["@4", "D=M"], vec!["D=D+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
@@ -539,7 +539,7 @@ impl Segment {
                 if 8 < *index {
                     vec![]
                 } else {
-                    [vec!["@5"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
+                    [vec!["@5", "D=M"], vec!["D=D+1"; *index as usize], vec!["A=M"]]
                         .concat()
                         .into_iter()
                         .map(|c| c.to_string())
