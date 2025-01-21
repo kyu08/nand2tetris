@@ -492,20 +492,20 @@ impl Segment {
     // Segmentの実アドレスを返す命令群を返す
     fn get_address_instructions(&self, file_name: &str) -> Vec<String> {
         match self {
-            // TODO: index == 0のときは何もしない
             Self::Argument(index) => {
                 // format!("@{}", index).as_str(), "A=D+A" のようにすれば対象のアドレスを取得できるが意図的にA=A+1の繰り返しで処理している。
                 // Dレジスタを使ってしまうとpopの処理時にSPの値を記憶しておくことができなくなってしまうため。
                 [
                     vec![format!("// argument {}", index).as_str(), "@2"],
-                    vec!["A=A+1"; *index as usize],
+                    vec!["M=M+1"; *index as usize],
+                    vec!["A=M"],
                 ]
                 .concat()
                 .iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>()
             }
-            Self::Local(index) => [vec!["@1"], vec!["A=A+1"; *index as usize]]
+            Self::Local(index) => [vec!["@1"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
@@ -516,12 +516,12 @@ impl Segment {
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
 
-            Self::This(index) => [vec!["@3"], vec!["A=A+1"; *index as usize]]
+            Self::This(index) => [vec!["@3"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
                 .collect::<Vec<String>>(),
-            Self::That(index) => [vec!["@4"], vec!["A=A+1"; *index as usize]]
+            Self::That(index) => [vec!["@4"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
                 .concat()
                 .into_iter()
                 .map(|c| c.to_string())
@@ -539,7 +539,7 @@ impl Segment {
                 if 8 < *index {
                     vec![]
                 } else {
-                    [vec!["@5"], vec!["A=A+1"; *index as usize]]
+                    [vec!["@5"], vec!["M=M+1"; *index as usize], vec!["A=M"]]
                         .concat()
                         .into_iter()
                         .map(|c| c.to_string())
