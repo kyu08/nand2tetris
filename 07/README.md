@@ -3,4 +3,4 @@
 - [x] `StackArithmetic/StackTest`
 - [ ] `MemoryAccess/BasicTest`
 - [ ] `MemoryAccess/PointerTest`
-- [ ] `MemoryAccess/StaticTest`
+- [x] `MemoryAccess/StaticTest`
