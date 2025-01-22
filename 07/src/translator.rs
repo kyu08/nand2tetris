@@ -273,7 +273,6 @@ impl Command {
 
             Command::Arithmetic(ArithmeticCommand::Lt) => {
                 // x: RAM[SP-2], y: RAM[SP-1]としたときのx<yの結果を返す
-                // TODO: ラベル作成関数を共通化する
                 let true_label = format!("TRUE_{:05}", label_suffix);
                 let false_label = format!("FALSE_{:05}", label_suffix);
                 let end_if_label = format!("END_IF_{:05}", label_suffix);
@@ -481,10 +480,10 @@ impl Segment {
                 }
             }
             Self::Temp(index) => {
-                if 8 < *index {
+                if 7 < *index {
                     vec![]
                 } else {
-                    [vec!["@5", "A=M"], vec!["A=A+1"; *index as usize]]
+                    [vec!["@5"], vec!["A=A+1"; *index as usize]]
                         .concat()
                         .into_iter()
                         .map(|c| c.to_string())
