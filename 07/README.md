@@ -4,3 +4,4 @@
 - [ ] `MemoryAccess/BasicTest`
 - [x] `MemoryAccess/PointerTest`
 - [x] `MemoryAccess/StaticTest`
+- [ ] Check all tests passing
