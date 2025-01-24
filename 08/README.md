@@ -3,7 +3,8 @@
 - [x] 以下のテストが通ることを確認する
     - [x] `test_data/ProgramFlow/BasicLoop`
     - [x] `test_data/ProgramFlow/FibonacciSeries`
-- [ ] `call`, `function`, `return`のparse, encodeを実装する
+- [x] `call`, `function`, `return`のparseを実装する
+- [ ] `call`, `function`, `return`のencodeを実装する
 - [ ] ブートストラップコードを実装する(P219参照)
 - [ ] フォルダ指定できるように修正する
     - [ ] 指定された引数がフォルダかファイルかを判定する

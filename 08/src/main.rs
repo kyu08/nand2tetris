@@ -21,7 +21,7 @@ fn main() {
     let file_name = source_file_path.file_stem().unwrap().to_string_lossy().to_string();
     let mut vm_program = parse(source_file_path.clone(), file_name);
     let machine_language = vm_program.to_hack_assembly();
-    let _ = std::fs::write(output_file_path, &machine_language);
+    let _ = std::fs::write(output_file_path, machine_language);
 }
 
 // 任意のpathを渡せるようにしておくとUTが書きやすいので切り出しておく

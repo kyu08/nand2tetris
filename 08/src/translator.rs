@@ -46,7 +46,20 @@ impl VMProgram {
                 "label" => terms.get(1).map(|first_arg| Command::Label(first_arg.to_string())),
                 "goto" => terms.get(1).map(|first_arg| Command::GoTo(first_arg.to_string())),
                 "if-goto" => terms.get(1).map(|first_arg| Command::IfGoTo(first_arg.to_string())),
-                _ => todo!("{} is not implemented yet", *terms.first().unwrap()),
+                "function" => terms.get(1).zip(terms.get(2)).and_then(|(function_name, vars_length)| {
+                    vars_length
+                        .parse::<u32>()
+                        .ok()
+                        .map(|len| Command::Function(function_name.to_string(), len))
+                }),
+                "call" => terms.get(1).zip(terms.get(2)).and_then(|(function_name, args_length)| {
+                    args_length
+                        .parse::<u32>()
+                        .ok()
+                        .map(|len| Command::Call(function_name.to_string(), len))
+                }),
+                "return" => Some(Command::Return),
+                _ => todo!("{} is invalid command", *terms.first().unwrap()),
             };
             if let Some(command) = command {
                 commands.push(command);
@@ -96,21 +109,12 @@ enum Command {
     Arithmetic(ArithmeticCommand),
     Push(Segment),
     Pop(Segment),
-    // これ以降のvariantは第8章で実装する
-    #[allow(dead_code)]
     Label(String),
-    #[allow(dead_code)]
     GoTo(String),
-    #[allow(dead_code)]
     IfGoTo(String),
-    #[allow(dead_code)]
-    If,
-    #[allow(dead_code)]
-    Function,
-    #[allow(dead_code)]
+    Function(String, u32),
+    Call(String, u32),
     Return,
-    #[allow(dead_code)]
-    Call,
 }
 
 impl Command {
@@ -423,10 +427,9 @@ impl Command {
                 .concat();
                 (commands, false)
             }
-            Command::If => todo!(),
-            Command::Function => todo!(),
+            Command::Function(_, _) => todo!(),
+            Command::Call(_, _) => todo!(),
             Command::Return => todo!(),
-            Command::Call => todo!(),
         }
     }
 }
@@ -622,7 +625,7 @@ add
             }
         );
 
-        // label, goto, if-goto
+        // label, goto, if-goto, function, call, return
         assert_eq!(
             VMProgram::new(
                 "foo.vm".to_string(),
@@ -630,6 +633,9 @@ add
 label LOOP
 goto LOOP
 if-goto LOOP
+function f_name 2
+call f_name 2
+return
                 "#
                 .to_string(),
             ),
@@ -638,6 +644,9 @@ if-goto LOOP
                     Command::Label("LOOP".to_string()),
                     Command::GoTo("LOOP".to_string()),
                     Command::IfGoTo("LOOP".to_string()),
+                    Command::Function("f_name".to_string(), 2),
+                    Command::Call("f_name".to_string(), 2),
+                    Command::Return,
                 ],
                 label_id: 0,
                 file_name: "foo.vm".to_string(),
