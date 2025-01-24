@@ -1,7 +1,16 @@
 ## TODO
-- [ ] `test_data/ProgramFlow/BasicLoop`
-- [ ] `test_data/ProgramFlow/FibonacciSeries`
-- [ ] `test_data/FunctionCalls/FibonacciElement`
-- [ ] `test_data/FunctionCalls/NestedCall`
-- [ ] `test_data/FunctionCalls/SimpleFunction`
-- [ ] `test_data/FunctionCalls/StaticsTest`
+- [ ] `label`, `if`, `if-goto`のparse, encodeを実装する
+- [ ] 以下のテストが通ることを確認する
+    - [ ] `test_data/ProgramFlow/BasicLoop`
+    - [ ] `test_data/ProgramFlow/FibonacciSeries`
+- [ ] `call`, `function`, `return`のparse, encodeを実装する
+- [ ] ブートストラップコードを実装する(P219参照)
+- [ ] フォルダ指定できるように修正する
+    - [ ] 指定された引数がフォルダかファイルかを判定する
+    - [ ] フォルダだったらすべての.vmファイルを処理する
+    - [ ] 処理結果をconcatして`folder_name.asm`に出力する
+- [ ] 以下のテストが通ることを確認する
+    - [ ] `test_data/FunctionCalls/FibonacciElement`
+    - [ ] `test_data/FunctionCalls/NestedCall`
+    - [ ] `test_data/FunctionCalls/SimpleFunction`
+    - [ ] `test_data/FunctionCalls/StaticsTest`
