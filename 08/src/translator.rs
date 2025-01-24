@@ -390,9 +390,37 @@ impl Command {
                 (commands, false)
             }
 
-            Command::Label(_label_name) => todo!(),
-            Command::GoTo(_label_name) => todo!(),
-            Command::IfGoTo(_label_name) => todo!(),
+            Command::Label(label_name) => {
+                let commands = [vec![format!("// {:?}", self)], vec![format!("({})", label_name)]].concat();
+                (commands, false)
+            }
+            Command::GoTo(label_name) => {
+                let commands = [
+                    vec![format!("// {:?}", self)],
+                    vec![format!("@{}", label_name), "0;JMP".to_string()],
+                ]
+                .concat();
+                (commands, false)
+            }
+            Command::IfGoTo(label_name) => {
+                let commands = [
+                    vec![format!("// {:?}", self)],
+                    // スタックの最上位の値xをpopし、x!=0ならばJUMPする
+                    vec![
+                        "@SP",
+                        "A=M-1",
+                        "D=M",
+                        "M=0",
+                        format!("@{}", label_name).as_str(),
+                        "D;JNE",
+                    ]
+                    .into_iter()
+                    .map(|c| c.to_string())
+                    .collect(),
+                ]
+                .concat();
+                (commands, false)
+            }
             Command::If => todo!(),
             Command::Function => todo!(),
             Command::Return => todo!(),
