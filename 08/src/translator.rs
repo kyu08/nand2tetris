@@ -411,6 +411,8 @@ impl Command {
                         "A=M-1",
                         "D=M",
                         "M=0",
+                        "@SP",
+                        "M=M-1",
                         format!("@{}", label_name).as_str(),
                         "D;JNE",
                     ]

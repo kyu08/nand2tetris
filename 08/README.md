@@ -1,8 +1,8 @@
 ## TODO
-- [ ] `label`, `if`, `if-goto`のparse, encodeを実装する
-- [ ] 以下のテストが通ることを確認する
-    - [ ] `test_data/ProgramFlow/BasicLoop`
-    - [ ] `test_data/ProgramFlow/FibonacciSeries`
+- [x] `label`, `if`, `if-goto`のparse, encodeを実装する
+- [x] 以下のテストが通ることを確認する
+    - [x] `test_data/ProgramFlow/BasicLoop`
+    - [x] `test_data/ProgramFlow/FibonacciSeries`
 - [ ] `call`, `function`, `return`のparse, encodeを実装する
 - [ ] ブートストラップコードを実装する(P219参照)
 - [ ] フォルダ指定できるように修正する
