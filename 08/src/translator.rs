@@ -19,7 +19,6 @@ impl VMProgram {
             let terms: Vec<&str> = trimmed.split_whitespace().collect();
 
             // NOTE: trimmed.is_empty()の場合は早期リターンしているのでunwrapしても問題ないはず
-            // TODO: Commandのメソッドとしたほうが凝集性高そう
             let command = match *terms.first().unwrap() {
                 "add" => Some(Command::Arithmetic(ArithmeticCommand::Add)),
                 "sub" => Some(Command::Arithmetic(ArithmeticCommand::Sub)),
@@ -44,7 +43,10 @@ impl VMProgram {
                         .and_then(|index| Segment::new(first_arg, index))
                         .map(Command::Pop)
                 }),
-                _ => todo!("impl"),
+                "label" => terms.get(1).map(|first_arg| Command::Label(first_arg.to_string())),
+                "goto" => terms.get(1).map(|first_arg| Command::GoTo(first_arg.to_string())),
+                "if-goto" => terms.get(1).map(|first_arg| Command::IfGoTo(first_arg.to_string())),
+                _ => todo!("{} is not implemented yet", *terms.first().unwrap()),
             };
             if let Some(command) = command {
                 commands.push(command);
@@ -96,9 +98,11 @@ enum Command {
     Pop(Segment),
     // これ以降のvariantは第8章で実装する
     #[allow(dead_code)]
-    Label,
+    Label(String),
     #[allow(dead_code)]
-    GoTo,
+    GoTo(String),
+    #[allow(dead_code)]
+    IfGoTo(String),
     #[allow(dead_code)]
     If,
     #[allow(dead_code)]
@@ -386,8 +390,9 @@ impl Command {
                 (commands, false)
             }
 
-            Command::Label => todo!(),
-            Command::GoTo => todo!(),
+            Command::Label(_label_name) => todo!(),
+            Command::GoTo(_label_name) => todo!(),
+            Command::IfGoTo(_label_name) => todo!(),
             Command::If => todo!(),
             Command::Function => todo!(),
             Command::Return => todo!(),
@@ -514,8 +519,10 @@ mod test {
 
     #[test]
     fn test_vm_program_new() {
+        // push, pop, add
         assert_eq!(
             VMProgram::new(
+                "foo.vm".to_string(),
                 r#"
 // This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
@@ -551,7 +558,6 @@ push temp 6
 add
                 "#
                 .to_string(),
-                "foo".to_string(),
             ),
             VMProgram {
                 commands: vec![
@@ -582,7 +588,29 @@ add
                     Command::Arithmetic(ArithmeticCommand::Add),
                 ],
                 label_id: 0,
-                file_name: "foo".to_string(),
+                file_name: "foo.vm".to_string(),
+            }
+        );
+
+        // label, goto, if-goto
+        assert_eq!(
+            VMProgram::new(
+                "foo.vm".to_string(),
+                r#"
+label LOOP
+goto LOOP
+if-goto LOOP
+                "#
+                .to_string(),
+            ),
+            VMProgram {
+                commands: vec![
+                    Command::Label("LOOP".to_string()),
+                    Command::GoTo("LOOP".to_string()),
+                    Command::IfGoTo("LOOP".to_string()),
+                ],
+                label_id: 0,
+                file_name: "foo.vm".to_string(),
             }
         );
     }
