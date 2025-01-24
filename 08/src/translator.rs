@@ -503,9 +503,35 @@ impl Command {
                 .into_iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false, true, None)
+                (commands, false, false, None)
             }
-            Command::Function(_, _) => todo!(),
+            Command::Function(function_name, vars_length) => {
+                let go_to_address_label = format!(
+                    "{}.{}", // 呼び出し先関数のアドレスを宣言し、Dに格納
+                    file_name, function_name
+                );
+                let init_local_segment = {
+                    let mut result: Vec<&str> = vec![];
+                    for _ in 0..*vars_length {
+                        result = [result, vec!["@0", "D=A"], push_d.clone()].concat();
+                    }
+                    result
+                };
+                let commands = [
+                    // 開始ラベルを挿入する
+                    vec![format!("({})", go_to_address_label).as_str()],
+                    // ローカルセグメントを初期化する(必要な数だけ0うめする）
+                    init_local_segment,
+                    // SPを先頭に移動する
+                    vec!["@SP"],
+                    vec!["M=M+1"; *vars_length as usize],
+                ]
+                .concat()
+                .into_iter()
+                .map(|c| c.to_string())
+                .collect();
+                (commands, false, false, Some(function_name.to_string()))
+            }
             Command::Return => todo!(),
         }
     }
