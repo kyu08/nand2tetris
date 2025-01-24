@@ -159,7 +159,7 @@ impl Command {
             Command::Arithmetic(ArithmeticCommand::Add) => {
                 // x: RAM[SP-2], y: RAM[SP-1]としたときのx+yの結果を返す
                 let commands = [
-                    vec!["// add"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // add
                     vec!["D=D+M"],
@@ -175,7 +175,7 @@ impl Command {
             Command::Arithmetic(ArithmeticCommand::Sub) => {
                 // x: RAM[SP-2], y: RAM[SP-1]としたときのx-yの結果を返す
                 let commands = [
-                    vec!["// sub"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // sub
                     vec!["D=D-M"],
@@ -191,7 +191,7 @@ impl Command {
             Command::Arithmetic(ArithmeticCommand::Neg) => {
                 // x: RAM[SP-1]としたときの-xの結果を返す
                 let commands = [
-                    vec!["// neg"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_1_operand,
                     // neg
                     vec!["D=-M"],
@@ -210,7 +210,7 @@ impl Command {
                 let false_label = format!("FALSE_{:05}", label_suffix);
                 let end_if_label = format!("END_IF_{:05}", label_suffix);
                 let commands = [
-                    vec!["// eq"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // eqの判定ここから
                     vec!["D=D-M"], // x-y
@@ -244,7 +244,7 @@ impl Command {
                 let end_if_label = format!("END_IF_{:05}", label_suffix);
                 let commands = [
                     // x: RAM[SP-2], y: RAM[SP-1]としたときのx>yの結果を返す
-                    vec!["// gt"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // gtの判定ここから
                     vec!["D=D-M"], // x-y
@@ -277,7 +277,7 @@ impl Command {
                 let false_label = format!("FALSE_{:05}", label_suffix);
                 let end_if_label = format!("END_IF_{:05}", label_suffix);
                 let commands = [
-                    vec!["// lt"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // ltの判定ここから
                     vec!["D=D-M"], // x-y
@@ -307,7 +307,7 @@ impl Command {
             Command::Arithmetic(ArithmeticCommand::And) => {
                 // x: RAM[SP-2], y: RAM[SP-1]としたときのx&yの結果を返す
                 let commands = [
-                    vec!["// and"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // and
                     vec!["D=D&M"],
@@ -322,7 +322,7 @@ impl Command {
 
             Command::Arithmetic(ArithmeticCommand::Or) => {
                 let commands = [
-                    vec!["// or"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_2_operand,
                     // or
                     vec!["D=D|M"],
@@ -338,7 +338,7 @@ impl Command {
             Command::Arithmetic(ArithmeticCommand::Not) => {
                 // x: RAM[SP-1]としたときの!xの結果を返す
                 let commands = [
-                    vec!["// not"],
+                    vec![format!("// {:?}", self).as_str()],
                     get_1_operand,
                     // not
                     vec!["D=!M"],
@@ -353,7 +353,7 @@ impl Command {
 
             Command::Push(segment) => {
                 let commands = [
-                    vec!["// push".to_string()],
+                    vec![format!("// {:?}", self)],
                     segment.clone().get_address_instructions(file_name),
                     vec![
                         format!("D={}", segment.get_value_register_name()).as_str(),
@@ -373,7 +373,8 @@ impl Command {
 
             Command::Pop(segment) => {
                 let commands = [
-                    vec!["// pop", "@SP", "A=M-1", "D=M", "M=0"]
+                    vec![format!("// {:?}", self)],
+                    vec!["@SP", "A=M-1", "D=M", "M=0"]
                         .into_iter()
                         .map(|c| c.to_string())
                         .collect(), // RAM[SP]の値をDに格納しMを初期化
