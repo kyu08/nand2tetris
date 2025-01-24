@@ -2,8 +2,15 @@
 #[derive(PartialEq, Eq, Debug)]
 pub struct VMProgram {
     commands: Vec<Command>,
-    label_id: u32,     // 処理ごとにラベルを一意にしたいケースにsuffixとして利用する値
-    file_name: String, // staticセグメントを機械語に変換する際に必要。`Foo.vm`で`static i`への参照があったとき`Foo.i`というシンボルを生成する。
+    // 処理ごとにラベルを一意にしたいケースにsuffixとして利用する値
+    label_id: u32,
+    // staticセグメントを機械語に変換する際に必要。`Foo.vm`で`static i`への参照があったとき`Foo.i`というシンボルを生成する。
+    file_name: String,
+    // returnアドレスのsuffix
+    // Xxx.vmの中のfoo関数の中で任意の関数を呼び出したとき、`Xxx.foo$ret.{return_address_id}`
+    return_address_id: u32,
+    // 現在の命令が所属する関数名
+    current_function_name: String,
 }
 
 impl VMProgram {
@@ -70,6 +77,8 @@ impl VMProgram {
             commands,
             label_id: 0,
             file_name,
+            return_address_id: 0,
+            current_function_name: String::new(),
         }
     }
 
@@ -83,10 +92,23 @@ impl VMProgram {
             // プログラム本体
             let mut result = vec!["// body".to_string()];
             for command in &self.commands.clone() {
-                let (a, should_increment_label_number) = command.to_commands(self.label_id, &self.file_name);
-                result.extend(a);
+                let (commands, should_increment_label_number, should_increment_return_address_id, _new_function_name) =
+                    command.to_commands(
+                        &self.file_name,
+                        self.label_id,
+                        self.return_address_id,
+                        &self.current_function_name,
+                    );
+                result.extend(commands);
+
                 if should_increment_label_number {
                     self.increment_label_id();
+                }
+                if should_increment_return_address_id {
+                    self.increment_return_address_id();
+                }
+                if let Some(func_name) = _new_function_name {
+                    self.update_current_function_name(func_name);
                 }
             }
             result
@@ -102,6 +124,14 @@ impl VMProgram {
     fn increment_label_id(&mut self) {
         self.label_id += 1
     }
+
+    fn increment_return_address_id(&mut self) {
+        self.return_address_id += 1
+    }
+
+    fn update_current_function_name(&mut self, function_name: String) {
+        self.current_function_name = function_name;
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -112,13 +142,24 @@ enum Command {
     Label(String),
     GoTo(String),
     IfGoTo(String),
-    Function(String, u32),
     Call(String, u32),
+    Function(String, u32),
     Return,
 }
 
 impl Command {
-    fn to_commands(&self, label_suffix: u32, file_name: &str) -> (Vec<String>, bool) {
+    // command, should_increment_label_number, should_increment_return_address_id,
+    // new_function_nameを返す
+    fn to_commands(
+        &self,
+        file_name: &str,
+        label_suffix: u32,
+        return_address_id: u32,
+        current_function_name: &str,
+    ) -> (Vec<String>, bool, bool, Option<String>) {
+        // RAM[SP]にDを格納する
+        let push_d: Vec<&str> = vec!["@SP", "A=M", "M=D", "@SP", "M=M+1"];
+
         // 1つのオペランドを取る処理の前処理
         // RAM[SP-1]をMに格納する
         let get_1_operand: Vec<&str> = vec!["@SP", "A=M", "A=A-1"];
@@ -144,7 +185,7 @@ impl Command {
             // SPをSP-1する
             vec!["@SP", "M=M-1"],
             // 結果をpushする
-            vec!["@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            push_d.clone(),
         ]
         .concat();
 
@@ -157,7 +198,7 @@ impl Command {
             // SPをSP-2する
             vec!["@SP", "M=M-1", "M=M-1"],
             // 結果をpushする
-            vec!["@SP", "A=M", "M=D", "@SP", "M=M+1"],
+            push_d.clone(),
         ]
         .concat();
 
@@ -177,7 +218,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Sub) => {
@@ -193,7 +234,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Neg) => {
@@ -209,7 +250,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Eq) => {
@@ -242,7 +283,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, true)
+                (commands, true, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Gt) => {
@@ -276,7 +317,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, true)
+                (commands, true, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Lt) => {
@@ -309,7 +350,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, true)
+                (commands, true, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::And) => {
@@ -325,7 +366,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Or) => {
@@ -340,7 +381,7 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Arithmetic(ArithmeticCommand::Not) => {
@@ -356,27 +397,21 @@ impl Command {
                 .iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Push(segment) => {
                 let commands = [
                     vec![format!("// {:?}", self)],
                     segment.clone().get_address_instructions(file_name),
-                    vec![
-                        format!("D={}", segment.get_value_register_name()).as_str(),
-                        "@SP",
-                        "A=M",
-                        "M=D",
-                        "@SP",
-                        "M=M+1",
-                    ]
-                    .into_iter()
-                    .map(|c| c.to_string())
-                    .collect(),
+                    vec![format!("D={}", segment.get_value_register_name()).as_str()]
+                        .into_iter()
+                        .map(|c| c.to_string())
+                        .collect(),
+                    push_d.clone().into_iter().map(|c| c.to_string()).collect(),
                 ]
                 .concat();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Pop(segment) => {
@@ -391,12 +426,12 @@ impl Command {
                     vec!["@SP", "M=M-1"].into_iter().map(|c| c.to_string()).collect(),
                 ]
                 .concat();
-                (commands, false)
+                (commands, false, false, None)
             }
 
             Command::Label(label_name) => {
                 let commands = [vec![format!("// {:?}", self)], vec![format!("({})", label_name)]].concat();
-                (commands, false)
+                (commands, false, false, None)
             }
             Command::GoTo(label_name) => {
                 let commands = [
@@ -404,7 +439,7 @@ impl Command {
                     vec![format!("@{}", label_name), "0;JMP".to_string()],
                 ]
                 .concat();
-                (commands, false)
+                (commands, false, false, None)
             }
             Command::IfGoTo(label_name) => {
                 let commands = [
@@ -425,10 +460,52 @@ impl Command {
                     .collect(),
                 ]
                 .concat();
-                (commands, false)
+                (commands, false, false, None)
+            }
+            Command::Call(function_name, vars_length) => {
+                let return_address_label = format!(
+                    "{}.{}$ret.{}", // リターンアドレスを宣言し、Dに格納
+                    file_name, current_function_name, return_address_id
+                );
+                let go_to_address_label = format!(
+                    "{}.{}", // 呼び出し先関数のアドレスを宣言し、Dに格納
+                    file_name, function_name
+                );
+                let commands = [
+                    vec![format!("// {:?}", self).as_str()],
+                    // リターンアドレスを宣言してスタックにpush
+                    vec![format!("@{}", return_address_label).as_str(), "D=A"],
+                    push_d.clone(),
+                    // LCL(RAM[1]: ローカルのベースアドレス)をpushし元のデータを消去
+                    vec!["@1", "D=M"],
+                    push_d.clone(),
+                    // ARG(RAM[2]: argumentのベースアドレス)をpushし元のデータを消去
+                    vec!["@2", "D=M"],
+                    push_d.clone(),
+                    // THIS(RAM[3]: thisのベースアドレス)をpushし元のデータを消去
+                    vec!["@3", "D=M"],
+                    push_d.clone(),
+                    // THAT(RAM[4]: thatのベースアドレス)をpushし元のデータを消去
+                    vec!["@4", "D=M"],
+                    push_d.clone(),
+                    // ARGを`SP-5-nArgs`に変更する
+                    vec!["@SP", "D=M", "@2", "M=D"],
+                    vec!["M=M-1"; (5 + vars_length) as usize],
+                    // LCLをSPの値に変更する
+                    vec!["@SP", "D=M", "@1", "M=D"],
+                    // 呼び出される側に制御を移す
+                    vec![format!("@{}", go_to_address_label).as_str(), "0;JMP"],
+                    // リターンアドレスラベルを挿入
+                    vec![format!("({})", return_address_label).as_str()],
+                    // MEMO: 呼び出される側のthis, that, pointer, tempを明示的に初期化する必要ってある？
+                ]
+                .concat()
+                .into_iter()
+                .map(|c| c.to_string())
+                .collect();
+                (commands, false, true, None)
             }
             Command::Function(_, _) => todo!(),
-            Command::Call(_, _) => todo!(),
             Command::Return => todo!(),
         }
     }
@@ -622,6 +699,8 @@ add
                 ],
                 label_id: 0,
                 file_name: "foo.vm".to_string(),
+                return_address_id: 0,
+                current_function_name: String::new(),
             }
         );
 
@@ -650,6 +729,8 @@ return
                 ],
                 label_id: 0,
                 file_name: "foo.vm".to_string(),
+                return_address_id: 0,
+                current_function_name: String::new(),
             }
         );
     }
