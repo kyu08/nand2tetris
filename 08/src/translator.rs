@@ -82,51 +82,53 @@ impl VMProgram {
         }
     }
 
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_hack_assembly(&mut self) -> String {
+    pub fn combine_and_assemble(programs: Vec<VMProgram>) -> String {
+        let mut result: Vec<String>;
+
         let init_stack_pointer = [vec!["// init", "@256", "D=A", "@SP", "M=D"]]
             .concat()
             .iter()
             .map(|c| c.to_string())
             .collect();
-        let (call_init, _, _, _) = Command::Call("Sys.init".to_string(), 0).to_commands(
-            &self.file_name,
-            self.label_id,
-            self.return_address_id,
-            &self.current_function_name,
-        );
-        let parsed_commands: Vec<String> = {
-            // プログラム本体
-            let mut result = vec!["// body".to_string()];
-            for command in &self.commands.clone() {
-                let (commands, should_increment_label_number, should_increment_return_address_id, _new_function_name) =
-                    command.to_commands(
-                        &self.file_name,
-                        self.label_id,
-                        self.return_address_id,
-                        &self.current_function_name,
-                    );
-                result.extend(commands);
+        let (call_init, _, _, _) = Command::Call("Sys.init".to_string(), 0).to_commands("init", 0, 0, "Init");
+        result = [init_stack_pointer, call_init].concat();
 
-                if should_increment_label_number {
-                    self.increment_label_id();
-                }
-                if should_increment_return_address_id {
-                    self.increment_return_address_id();
-                }
-                if let Some(func_name) = _new_function_name {
-                    self.update_current_function_name(func_name);
-                }
-            }
-            result
-        };
+        for mut p in programs {
+            result = [result, p.to_machine_language()].concat()
+        }
         let shutdown_loop = ["// end", "(END)", "@END", "0;JMP"]
             .iter()
             .map(|c| c.to_string())
             .collect(); // 終了用の無限ループ
-        [init_stack_pointer, call_init, parsed_commands, shutdown_loop]
-            .concat()
-            .join("\n")
+        result = [result, shutdown_loop].concat();
+
+        result.join("\n")
+    }
+
+    #[allow(clippy::wrong_self_convention)]
+    pub fn to_machine_language(&mut self) -> Vec<String> {
+        let mut result = vec!["// body".to_string()];
+        for command in &self.commands.clone() {
+            let (commands, should_increment_label_number, should_increment_return_address_id, _new_function_name) =
+                command.to_commands(
+                    &self.file_name,
+                    self.label_id,
+                    self.return_address_id,
+                    &self.current_function_name,
+                );
+            result.extend(commands);
+
+            if should_increment_label_number {
+                self.increment_label_id();
+            }
+            if should_increment_return_address_id {
+                self.increment_return_address_id();
+            }
+            if let Some(func_name) = _new_function_name {
+                self.update_current_function_name(func_name);
+            }
+        }
+        result
     }
 
     fn increment_label_id(&mut self) {

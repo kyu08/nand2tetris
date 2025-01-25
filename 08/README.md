@@ -12,10 +12,10 @@
     - [x] SPの初期化
     - [x] `Sys.init`を呼び出す
         - [x] 何も読んでない段階で`call Sys.init`してもお問題ないんだっけ？ -> 大丈夫そう
-- [ ] フォルダ指定できるように修正する
-    - [ ] 指定された引数がフォルダかファイルかを判定する
-    - [ ] フォルダだったらすべての.vmファイルを処理する
-    - [ ] 処理結果をconcatして`folder_name.asm`に出力する
+- [x] フォルダ指定できるように修正する
+    - [x] 指定された引数がフォルダかファイルかを判定する
+    - [x] フォルダだったらすべての.vmファイルを処理する
+    - [x] 処理結果をconcatして`folder_name.asm`に出力する
 - [ ] 以下のテストが通ることを確認する
     - [ ] `test_data/FunctionCalls/NestedCall`
     - [ ] `test_data/FunctionCalls/FibonacciElement`
