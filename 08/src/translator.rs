@@ -117,7 +117,6 @@ impl VMProgram {
             .iter()
             .map(|c| c.to_string())
             .collect(); // 終了用の無限ループ
-                        //
         [init_commands, parsed_commands, shutdown_commands].concat().join("\n")
     }
 
@@ -518,13 +517,11 @@ impl Command {
                     result
                 };
                 let commands = [
+                    vec![format!("// {:?}", self).as_str()],
                     // 開始ラベルを挿入する
                     vec![format!("({})", go_to_address_label).as_str()],
                     // ローカルセグメントを初期化する(必要な数だけ0うめする）
                     init_local_segment,
-                    // SPを先頭に移動する
-                    vec!["@SP"],
-                    vec!["M=M+1"; *vars_length as usize],
                 ]
                 .concat()
                 .into_iter()
@@ -532,7 +529,34 @@ impl Command {
                 .collect();
                 (commands, false, false, Some(function_name.to_string()))
             }
-            Command::Return => todo!(),
+            Command::Return => {
+                let commands = [
+                    vec![format!("// {:?}", self).as_str()],
+                    // LCLを一時変数(R13)に保存(以降のコメントではR13のことをframeと呼ぶ)
+                    vec!["@1", "D=M", "@13", "M=D"],
+                    // リターンアドレス*(frame-5)を一時変数(R14)に保存(以降はretAddrと呼ぶ)
+                    [vec!["@13", "A=M"], vec!["A=A-1"; 5], vec!["D=M", "@14", "M=D"]].concat(),
+                    // 戻り値(スタックの先頭にあるはず)をRAM[ARG]にpopする
+                    vec!["@SP", "A=M-1", "D=M", "@2", "A=M", "M=D"],
+                    // SPをARG+1の位置に設定する
+                    vec!["@2", "D=M+1", "@SP", "M=D"],
+                    // 呼び出し側のTHATを復元する(*(frame-1))
+                    vec!["@13", "A=M-1", "D=M", "@4", "M=D"],
+                    // 呼び出し側のTHISを復元する(*(frame-2))
+                    [vec!["@13", "A=M"], vec!["A=A-1"; 2], vec!["D=M", "@3", "M=D"]].concat(),
+                    // 呼び出し側のARGを復元する
+                    [vec!["@13", "A=M"], vec!["A=A-1"; 3], vec!["D=M", "@2", "M=D"]].concat(),
+                    // 呼び出し側のLCLを復元する
+                    [vec!["@13", "A=M"], vec!["A=A-1"; 4], vec!["D=M", "@1", "M=D"]].concat(),
+                    // リターンアドレスに移動する
+                    vec!["@R14", "A=M", "0;JMP"],
+                ]
+                .concat()
+                .into_iter()
+                .map(|c| c.to_string())
+                .collect();
+                (commands, false, false, None)
+            }
         }
     }
 }

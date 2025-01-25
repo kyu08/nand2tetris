@@ -5,9 +5,9 @@
     - [x] `test_data/ProgramFlow/FibonacciSeries`
 - [x] `call`, `function`, `return`のparseを実装する
 - [x] `call`のencodeを実装する
-- [ ] `function`のencodeを実装する
-- [ ] `return`のencodeを実装する
-- [ ] `test_data/FunctionCalls/SimpleFunction`
+- [x] `function`のencodeを実装する
+- [x] `return`のencodeを実装する
+- [x] `test_data/FunctionCalls/SimpleFunction`
 - [ ] ブートストラップコードを実装する(P219参照)
 - [ ] フォルダ指定できるように修正する
     - [ ] 指定された引数がフォルダかファイルかを判定する
