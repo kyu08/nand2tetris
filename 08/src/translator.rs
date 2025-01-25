@@ -84,10 +84,17 @@ impl VMProgram {
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_hack_assembly(&mut self) -> String {
-        let init_commands = ["// init", "@256", "D=A", "@SP", "M=D"]
+        let init_stack_pointer = [vec!["// init", "@256", "D=A", "@SP", "M=D"]]
+            .concat()
             .iter()
             .map(|c| c.to_string())
-            .collect(); // SPの初期化コマンド
+            .collect();
+        let (call_init, _, _, _) = Command::Call("Sys.init".to_string(), 0).to_commands(
+            &self.file_name,
+            self.label_id,
+            self.return_address_id,
+            &self.current_function_name,
+        );
         let parsed_commands: Vec<String> = {
             // プログラム本体
             let mut result = vec!["// body".to_string()];
@@ -113,11 +120,13 @@ impl VMProgram {
             }
             result
         };
-        let shutdown_commands = ["// end", "(END)", "@END", "0;JMP"]
+        let shutdown_loop = ["// end", "(END)", "@END", "0;JMP"]
             .iter()
             .map(|c| c.to_string())
             .collect(); // 終了用の無限ループ
-        [init_commands, parsed_commands, shutdown_commands].concat().join("\n")
+        [init_stack_pointer, call_init, parsed_commands, shutdown_loop]
+            .concat()
+            .join("\n")
     }
 
     fn increment_label_id(&mut self) {
