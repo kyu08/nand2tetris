@@ -109,7 +109,7 @@ impl VMProgram {
     pub fn to_machine_language(&mut self) -> Vec<String> {
         let mut result = vec!["// body".to_string()];
         for command in &self.commands.clone() {
-            let (commands, should_increment_label_number, should_increment_return_address_id, _new_function_name) =
+            let (commands, should_increment_label_number, should_increment_return_address_id, new_function_name) =
                 command.to_commands(
                     &self.file_name,
                     self.label_id,
@@ -124,7 +124,7 @@ impl VMProgram {
             if should_increment_return_address_id {
                 self.increment_return_address_id();
             }
-            if let Some(func_name) = _new_function_name {
+            if let Some(func_name) = new_function_name {
                 self.update_current_function_name(func_name);
             }
         }
@@ -513,7 +513,7 @@ impl Command {
                 .into_iter()
                 .map(|c| c.to_string())
                 .collect();
-                (commands, false, false, None)
+                (commands, false, true, None)
             }
             Command::Function(function_name, vars_length) => {
                 let go_to_address_label = format!(
