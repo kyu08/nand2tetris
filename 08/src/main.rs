@@ -54,45 +54,6 @@ fn get_target_files(input_path: &Path) -> Option<(Vec<PathBuf>, PathBuf)> {
     Some((result, input_path.join(input_path.file_name().unwrap()).with_extension("asm")))
 }
 
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//     use pretty_assertions::assert_eq;
-//
-//     #[test]
-//     fn test_assemble() {
-//         assert_eq!(
-//             format!("{}\n", assemble(PathBuf::from("test_data/add/Add.asm"))),
-//             read_to_string("test_data/add/Add.hack").unwrap()
-//         );
-//         assert_eq!(
-//             format!("{}\n", assemble(PathBuf::from("test_data/max/Max.asm"))),
-//             read_to_string("test_data/max/Max.hack").unwrap()
-//         );
-//         assert_eq!(
-//             format!("{}\n", assemble(PathBuf::from("test_data/max/MaxL.asm"))),
-//             read_to_string("test_data/max/MaxL.hack").unwrap()
-//         );
-//         // NOTE: ↑の3ファイルだけ末尾改行が入ってない or ↓だけ末尾改行が入っちゃってる
-//         assert_eq!(
-//             assemble(PathBuf::from("test_data/pong/Pong.asm")),
-//             read_to_string("test_data/pong/Pong.hack").unwrap()
-//         );
-//         assert_eq!(
-//             assemble(PathBuf::from("test_data/pong/PongL.asm")),
-//             read_to_string("test_data/pong/PongL.hack").unwrap()
-//         );
-//         assert_eq!(
-//             assemble(PathBuf::from("test_data/rect/RectL.asm")),
-//             read_to_string("test_data/rect/RectL.hack").unwrap()
-//         );
-//         assert_eq!(
-//             assemble(PathBuf::from("test_data/rect/Rect.asm")),
-//             read_to_string("test_data/rect/Rect.hack").unwrap()
-//         );
-//     }
-// }
-//
 #[cfg(test)]
 mod test {
     use super::*;
