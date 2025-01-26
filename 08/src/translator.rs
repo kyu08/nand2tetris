@@ -90,7 +90,8 @@ impl VMProgram {
             .iter()
             .map(|c| c.to_string())
             .collect();
-        let (call_init, _, _, _) = Command::Call("Sys.init".to_string(), 0).to_commands("init", 0, 0, "Init");
+        // TODO: to_commandsの第1引数、本当はSys.initが定義されているファイル名を取る必要がある
+        let (call_init, _, _, _) = Command::Call("Sys.init".to_string(), 0).to_commands("Sys", 0, 0, "Init");
         result = [init_stack_pointer, call_init].concat();
 
         for mut p in programs {
@@ -477,9 +478,13 @@ impl Command {
                     "{}.{}$ret.{}", // リターンアドレスを宣言し、Dに格納
                     file_name, current_function_name, return_address_id
                 );
+                // defined_file_nameは本来はVec<VMProgram>を走査して定義されているファイルを特定する必要があるが
+                // ここではfunction
+                // Class1.getのようにファイル名が先頭につくのでそれを利用している。
+                let defined_file_name = function_name.split('.').collect::<Vec<&str>>()[0].to_string();
                 let go_to_address_label = format!(
                     "{}.{}", // 呼び出し先関数のアドレスを宣言し、Dに格納
-                    file_name, function_name
+                    defined_file_name, function_name
                 );
                 let commands = [
                     vec![format!("// {:?}", self).as_str()],
