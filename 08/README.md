@@ -17,6 +17,6 @@
     - [x] フォルダだったらすべての.vmファイルを処理する
     - [x] 処理結果をconcatして`folder_name.asm`に出力する
 - [ ] 以下のテストが通ることを確認する
+    - [x] `test_data/FunctionCalls/StaticsTest`
+    - [x] `test_data/FunctionCalls/FibonacciElement`
     - [ ] `test_data/FunctionCalls/NestedCall`
-    - [ ] `test_data/FunctionCalls/FibonacciElement`
-    - [ ] `test_data/FunctionCalls/StaticsTest`
