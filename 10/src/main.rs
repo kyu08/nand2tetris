@@ -1,3 +1,5 @@
+mod token;
+
 fn main() {
     let command_line_args: Vec<String> = std::env::args().collect();
     if command_line_args.len() != 2 {
@@ -5,39 +7,29 @@ fn main() {
         return;
     }
     let source_file_path = std::path::PathBuf::from(&command_line_args[1]);
-    let (_target_files, output_file_path) = get_target_files(&source_file_path).unwrap();
+    let target_files = get_target_files(&source_file_path).unwrap();
 
-    // let vm_files = target_files
-    //     .into_iter()
-    //     .map(|target| {
-    //         let file_name_without_ext = target.file_stem().unwrap().to_string_lossy().to_string();
-    //         parse(target, file_name_without_ext)
-    //     })
-    //     .collect();
-
-    // let combined_assembly = VMProgram::combine_and_assemble(vm_files);
-    let _ = std::fs::write(output_file_path, "TODO: あとで書き換える");
+    for target in target_files {
+        let content = std::fs::read_to_string(target.clone()).unwrap();
+        let parsed = token::Tokenizer::new(content);
+        let output_file_path = target.with_extension("xml");
+        let _ = std::fs::write(output_file_path, parsed.toXml());
+    }
 }
 
-// 任意のpathを渡せるようにしておくとUTが書きやすいので切り出しておく
-// fn parse(path: std::path::PathBuf, file_name: String) -> translator::VMProgram {
-//     let content = std::fs::read_to_string(path.clone()).expect("Failed to read file");
-//     // translator::VMProgram::new(file_name, content)
-// }
-
-fn get_target_files(input_path: &std::path::Path) -> Option<(Vec<std::path::PathBuf>, std::path::PathBuf)> {
-    // inputがファイルだったら.vmかどうか判定して(target_files, output_file_path)を返す
+fn get_target_files(input_path: &std::path::Path) -> Option<Vec<std::path::PathBuf>> {
+    // inputがファイルだったら.jackかどうか判定して(target_files, output_file_path)を返す
     if input_path.is_file() {
         if input_path.extension().unwrap() != "jack" {
             return None;
         }
-        return Some((vec![input_path.to_path_buf()], input_path.with_extension("xml")));
+        return Some(vec![input_path.to_path_buf()]);
     }
     if !input_path.is_dir() {
         return None;
     }
 
-    // inputがフォルダだったら.vmファイルを探してきて(target_files, output_file_path)を返す
+    // inputがフォルダだったら.jackファイルを探してきて(target_files, output_file_path)を返す
     let mut result = vec![];
     for e in std::fs::read_dir(input_path).unwrap() {
         let e_path = e.unwrap().path();
@@ -46,7 +38,7 @@ fn get_target_files(input_path: &std::path::Path) -> Option<(Vec<std::path::Path
         }
     }
 
-    Some((result, input_path.join(input_path.file_name().unwrap()).with_extension("xml")))
+    Some(result)
 }
 
 #[cfg(test)]
@@ -80,7 +72,7 @@ mod test {
 
             let file_path = test_target_dir.join("foo.jack");
             std::fs::File::create(&file_path).unwrap();
-            assert_eq!(get_target_files(&file_path), Some((vec![file_path], test_target_dir.join("foo.xml"))));
+            assert_eq!(get_target_files(&file_path), Some(vec![file_path]));
         }
 
         // dirのパスを渡す
@@ -100,12 +92,11 @@ mod test {
             std::fs::File::create(&other).unwrap();
 
             let result = get_target_files(&parent_dir.clone()).unwrap();
-            assert_eq!(result.0.len(), 3);
-            assert_eq!(result.0.contains(&main), true);
-            assert_eq!(result.0.contains(&child1), true);
-            assert_eq!(result.0.contains(&child2), true);
-            assert_eq!(result.0.contains(&other), false);
-            assert_eq!(result.1, parent_dir.join("Foo.xml"));
+            assert_eq!(result.len(), 3);
+            assert_eq!(result.contains(&main), true);
+            assert_eq!(result.contains(&child1), true);
+            assert_eq!(result.contains(&child2), true);
+            assert_eq!(result.contains(&other), false);
         }
 
         let _ = std::fs::remove_dir_all(&test_root_dir);
