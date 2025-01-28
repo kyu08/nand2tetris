@@ -1,4 +1,5 @@
-mod token;
+mod analyzer;
+mod compiler;
 
 fn main() {
     let command_line_args: Vec<String> = std::env::args().collect();
@@ -11,7 +12,7 @@ fn main() {
 
     for target in target_files {
         let content = std::fs::read_to_string(target.clone()).unwrap();
-        let parsed = token::Tokens::new(content);
+        let parsed = analyzer::token::Tokens::new(content);
         let output_file_path = target.with_extension("gen.xml");
         let _ = std::fs::write(output_file_path, parsed.to_xml());
     }

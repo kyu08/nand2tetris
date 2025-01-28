@@ -137,7 +137,7 @@ impl Tokens {
         } else if let Ok(num) = token.clone().parse::<u32>() {
             Token::IntegerConstant(num)
         } else {
-            Token::Identifier(token)
+            Token::Identifier(Identifier(token))
         }
     }
 
@@ -152,13 +152,16 @@ impl Tokens {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Token {
+pub enum Token {
     Key(Keyword),
     Sym(Symbol),
     IntegerConstant(u32),
     StringConstant(String),
-    Identifier(String),
+    Identifier(Identifier),
 }
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Identifier(String);
 
 impl Token {
     fn to_xml(&self) -> String {
@@ -181,7 +184,7 @@ impl Token {
             }
             Self::Identifier(v) => {
                 let tag_name = "identifier";
-                format!("<{}> {} </{}>", tag_name, v, tag_name)
+                format!("<{}> {} </{}>", tag_name, v.0, tag_name)
             }
         }
     }
@@ -316,14 +319,6 @@ impl Symbol {
     }
 }
 
-// TODO: ファイル名、module構成を再考する
-#[allow(dead_code)]
-struct CompilationEngine {
-    // Tokenizerからわたってきた字句解析結果
-    token: Vec<Token>,
-    // TODO: その他必要な状態を持たせる
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -345,24 +340,24 @@ mod test {
             Tokens {
                 tokens: vec![
                     Token::Key(Keyword::Class),
-                    Token::Identifier("Main".to_string()),
+                    Token::Identifier(Identifier("Main".to_string())),
                     Token::Sym(Symbol::LeftBrace),
                     Token::Key(Keyword::Function),
                     Token::Key(Keyword::Void),
-                    Token::Identifier("main".to_string()),
+                    Token::Identifier(Identifier("main".to_string())),
                     Token::Sym(Symbol::LeftParen),
                     Token::Sym(Symbol::RightParen),
                     Token::Sym(Symbol::LeftBrace),
                     Token::Key(Keyword::Do),
-                    Token::Identifier("Output".to_string()),
+                    Token::Identifier(Identifier("Output".to_string())),
                     Token::Sym(Symbol::Dot),
-                    Token::Identifier("printString".to_string()),
+                    Token::Identifier(Identifier("printString".to_string())),
                     Token::Sym(Symbol::LeftParen),
                     Token::StringConstant("hello. world!".to_string()),
                     Token::Sym(Symbol::RightParen),
                     Token::Sym(Symbol::SemiColon),
                     Token::Key(Keyword::Let),
-                    Token::Identifier("x".to_string()),
+                    Token::Identifier(Identifier("x".to_string())),
                     Token::Sym(Symbol::Equal),
                     Token::IntegerConstant(100),
                     Token::Sym(Symbol::SemiColon),
@@ -397,18 +392,18 @@ mod test {
             Tokens {
                 tokens: vec![
                     Token::Key(Keyword::Class),
-                    Token::Identifier("Main".to_string()),
+                    Token::Identifier(Identifier("Main".to_string())),
                     Token::Sym(Symbol::LeftBrace),
                     Token::Key(Keyword::Function),
                     Token::Key(Keyword::Void),
-                    Token::Identifier("main".to_string()),
+                    Token::Identifier(Identifier("main".to_string())),
                     Token::Sym(Symbol::LeftParen),
                     Token::Sym(Symbol::RightParen),
                     Token::Sym(Symbol::LeftBrace),
                     Token::Key(Keyword::Do),
-                    Token::Identifier("Output".to_string()),
+                    Token::Identifier(Identifier("Output".to_string())),
                     Token::Sym(Symbol::Dot),
-                    Token::Identifier("printString".to_string()),
+                    Token::Identifier(Identifier("printString".to_string())),
                     Token::Sym(Symbol::LeftParen),
                     Token::StringConstant("/*hello.*/ world!".to_string()),
                     Token::Sym(Symbol::RightParen),
