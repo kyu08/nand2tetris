@@ -123,10 +123,12 @@ impl Tokens {
     }
 
     pub fn to_xml(&self) -> String {
-        // TODO: インデントをどうするか問題をあとで考える
-        todo!();
-        // let result: String = "".to_string();
-        // result
+        let mut result = vec!["<tokens>".to_string()];
+        for t in &self.tokens {
+            result.push(t.to_xml());
+        }
+        result.push("</tokens>".to_string());
+        result.join("\n")
     }
 
     fn parse_as_keyword_or_identifier(token: String) -> Token {
@@ -156,6 +158,33 @@ enum Token {
     IntegerConstant(u32),
     StringConstant(String),
     Identifier(String),
+}
+
+impl Token {
+    fn to_xml(&self) -> String {
+        match self {
+            Self::Key(v) => {
+                let tag_name = "keyword";
+                format!("<{}> {} </{}>", tag_name, format!("{:?}", v).to_lowercase(), tag_name)
+            }
+            Self::Sym(v) => {
+                let tag_name = "symbol";
+                format!("<{}> {} </{}>", tag_name, v.to_char(), tag_name)
+            }
+            Self::IntegerConstant(v) => {
+                let tag_name = "integerConstant";
+                format!("<{}> {} </{}>", tag_name, v, tag_name)
+            }
+            Self::StringConstant(v) => {
+                let tag_name = "stringConstant";
+                format!("<{}> {} </{}>", tag_name, v, tag_name)
+            }
+            Self::Identifier(v) => {
+                let tag_name = "identifier";
+                format!("<{}> {} </{}>", tag_name, v, tag_name)
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -258,6 +287,30 @@ impl Symbol {
             '=' => Some(Symbol::Equal),
             '~' => Some(Symbol::Tilde),
             _ => None,
+        }
+    }
+
+    fn to_char(&self) -> char {
+        match self {
+            Symbol::LeftBrace => '{',
+            Symbol::RightBrace => '}',
+            Symbol::LeftParen => '(',
+            Symbol::RightParen => ')',
+            Symbol::LeftBracket => '[',
+            Symbol::RightBracket => ']',
+            Symbol::Dot => '.',
+            Symbol::Comma => ',',
+            Symbol::SemiColon => ';',
+            Symbol::Plus => '+',
+            Symbol::Minus => '-',
+            Symbol::Asterisk => '*',
+            Symbol::Slash => '/',
+            Symbol::Ampersand => '&',
+            Symbol::Pipe => '|',
+            Symbol::MoreThan => '>',
+            Symbol::LessThan => '<',
+            Symbol::Equal => '=',
+            Symbol::Tilde => '~',
         }
     }
 }

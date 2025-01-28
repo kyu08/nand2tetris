@@ -12,7 +12,7 @@ fn main() {
     for target in target_files {
         let content = std::fs::read_to_string(target.clone()).unwrap();
         let parsed = token::Tokens::new(content);
-        let output_file_path = target.with_extension("xml");
+        let output_file_path = target.with_extension("gen.xml");
         let _ = std::fs::write(output_file_path, parsed.to_xml());
     }
 }

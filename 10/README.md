@@ -1,7 +1,13 @@
 ## TODO
-- [ ] トークナイザを実装
+- [x] トークナイザを実装
 - [ ] トークナイザのテストをパスすることを確認
-    - [ ] `test_data/ExpressionLessSquare/SquareT.xml`
+    - [x] `test_data/ExpressionLessSquare/SquareT.xml`
+        ```sh
+        cargo run test_data/ExpressionLessSquare/ \
+            && diff -w -B test_data/ExpressionLessSquare/MainT.xml test_data/ExpressionLessSquare/Main.gen.xml \
+            && diff -w -B test_data/ExpressionLessSquare/SquareT.xml test_data/ExpressionLessSquare/Square.gen.xml \
+            && diff -w -B test_data/ExpressionLessSquare/SquareGameT.xml test_data/ExpressionLessSquare/SquareGame.gen.xml 
+        ```
     - [ ] `test_data/ExpressionLessSquare/SquareGameT.xml`
     - [ ] `test_data/ExpressionLessSquare/MainT.xml`
     - [ ] `test_data/ArrayTest/MainT.xml`
