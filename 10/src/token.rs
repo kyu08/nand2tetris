@@ -2,22 +2,91 @@
 pub struct Tokens {
     tokens: Vec<Token>,
     parsing_token: String,
-    is_string_const: bool,
+    parsing_string_const: bool,
+    current_comment_type: Option<CurrentCommentType>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CurrentCommentType {
+    /// `// comment`形式のコメント(行末まで)
+    Normal,
+    /// `/* multi \n line \n comment */`形式のコメント(1行/複数行両方のパターンがある)
+    /// 厳密にはAPIコメントもあるが、`//* comment */`という形式なのでMultiLineコメントの一種として扱ってしまう
+    MultiLine,
 }
 
 impl Tokens {
     // トークナイズする関数
     pub fn new(source_code: String) -> Self {
+        // TODO: IntegerConstant対応する
         let mut tokens = Tokens {
             tokens: vec![],
             parsing_token: "".to_string(),
-            is_string_const: false,
+            parsing_string_const: false,
+            current_comment_type: None,
         };
 
-        for char in source_code.chars() {
+        for (index, char) in source_code.chars().enumerate() {
+            // コメント終端判定
+            match &tokens.current_comment_type {
+                Some(CurrentCommentType::Normal) => {
+                    // Normalコメントは行末にきたら終了する
+                    if Self::is_end_of_line(char) {
+                        tokens.current_comment_type = None;
+                    }
+                    continue;
+                }
+                Some(CurrentCommentType::MultiLine) => {
+                    if let Some(sym) = Symbol::new(char) {
+                        if matches!(sym, Symbol::Slash) {
+                            if let Some(got) = source_code.chars().nth(index - 1) {
+                                if let Some(Symbol::Asterisk) = Symbol::new(got) {
+                                    // `*/`だったらMultiLineコメント終了
+                                    tokens.current_comment_type = None;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                    continue;
+                }
+                _ => {}
+            }
+
+            if let Some(c) = Symbol::new(char) {
+                if !tokens.parsing_string_const {
+                    // コメント開始判定
+                    // 上で判定しているのでcurrent_comment_type == Noneなことを前提にできる
+                    if let Symbol::Slash = c {
+                        if let Some(got) = source_code.chars().nth(index + 1) {
+                            if let Some(Symbol::Slash) = Symbol::new(got) {
+                                // `/`が連続していたらNormalコメント開始
+                                tokens.current_comment_type = Some(CurrentCommentType::Normal);
+                                continue;
+                            }
+                        }
+                        if let Some(got) = source_code.chars().nth(index + 1) {
+                            if let Some(Symbol::Asterisk) = Symbol::new(got) {
+                                // `/*`だったらMultiLineコメント開始
+                                tokens.current_comment_type = Some(CurrentCommentType::MultiLine);
+                                continue;
+                            }
+                        }
+                    }
+                    // コメント開始ではなかったのでSymbolとしてpush
+                    if !tokens.parsing_token.is_empty() {
+                        let token = Self::parse_as_keyword_or_identifier(tokens.parsing_token.clone());
+                        tokens.push_token(token);
+                    }
+                    tokens.tokens.push(Token::Sym(c));
+                    continue;
+                }
+            }
+
+            // `"`のハンドリング
             if char == '"' {
                 // 文字列の始点
-                if !tokens.is_string_const {
+                if !tokens.parsing_string_const {
                     tokens.toggle_is_string_const();
                 } else {
                     // 文字列の終端
@@ -28,19 +97,8 @@ impl Tokens {
                 continue;
             }
 
-            if let Some(c) = Symbol::new(char) {
-                if !tokens.is_string_const {
-                    if !tokens.parsing_token.is_empty() {
-                        let token = Self::parse_as_keyword_or_identifier(tokens.parsing_token.clone());
-                        tokens.push_token(token);
-                    }
-                    tokens.tokens.push(Token::Sym(c));
-                    continue;
-                }
-            }
-
             if char.is_whitespace() {
-                if tokens.is_string_const {
+                if tokens.parsing_string_const {
                     tokens.parsing_token += &char.to_string();
                     continue;
                 }
@@ -59,13 +117,14 @@ impl Tokens {
     }
 
     fn toggle_is_string_const(&mut self) {
-        self.is_string_const = !self.is_string_const;
+        self.parsing_string_const = !self.parsing_string_const;
     }
 
     pub fn to_xml(&self) -> String {
         // TODO: インデントをどうするか問題をあとで考える
-        let result: String = "".to_string();
-        result
+        todo!();
+        // let result: String = "".to_string();
+        // result
     }
 
     fn parse_as_keyword_or_identifier(token: String) -> Token {
@@ -80,9 +139,12 @@ impl Tokens {
         self.tokens.push(token);
         self.parsing_token = String::new();
     }
+
+    fn is_end_of_line(c: char) -> bool {
+        c == '\n' || c == '\r'
+    }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 enum Token {
     Key(Keyword),
@@ -92,7 +154,6 @@ enum Token {
     Identifier(String),
 }
 
-#[allow(dead_code)]
 #[derive(Debug, PartialEq, Eq)]
 enum Keyword {
     Class,
@@ -200,7 +261,7 @@ impl Symbol {
 #[allow(dead_code)]
 struct CompilationEngine {
     // Tokenizerからわたってきた字句解析結果
-    token: Vec<Symbol>,
+    token: Vec<Token>,
     // TODO: その他必要な状態を持たせる
 }
 
@@ -212,8 +273,7 @@ mod test {
     fn test_tokenizer_new() {
         assert_eq!(
             Tokens::new(
-                r#"
-                class Main {
+                r#"class Main {
                   function void main() {
                     do Output.printString("hello. world!");
                     return;
@@ -247,54 +307,56 @@ mod test {
                     Token::Sym(Symbol::RightBrace),
                 ],
                 parsing_token: String::new(),
-                is_string_const: false,
+                parsing_string_const: false,
+                current_comment_type: None,
             }
         );
 
         // program with comments
-        // assert_eq!(
-        //     Tokens::new(
-        //         r#"
-        //         class Main {
-        //           /** api comment */
-        //           function void main() {
-        //             /*
-        //              multi line comment
-        //              */
-        //             do Output.printString("hello. world!");
-        //             return; // comment
-        //           }
-        //         }
-        //                         "#
-        //         .to_string()
-        //     ),
-        //     Tokens {
-        //         tokens: vec![
-        //             Token::Key(Keyword::Class),
-        //             Token::Identifier("Main".to_string()),
-        //             Token::Sym(Symbol::LeftBrace),
-        //             Token::Key(Keyword::Function),
-        //             Token::Key(Keyword::Void),
-        //             Token::Identifier("main".to_string()),
-        //             Token::Sym(Symbol::LeftParen),
-        //             Token::Sym(Symbol::RightParen),
-        //             Token::Sym(Symbol::LeftBrace),
-        //             Token::Key(Keyword::Do),
-        //             Token::Identifier("Output".to_string()),
-        //             Token::Sym(Symbol::Dot),
-        //             Token::Identifier("printString".to_string()),
-        //             Token::Sym(Symbol::LeftParen),
-        //             Token::StringConstant("hello. world!".to_string()),
-        //             Token::Sym(Symbol::RightParen),
-        //             Token::Sym(Symbol::SemiColon),
-        //             Token::Key(Keyword::Return),
-        //             Token::Sym(Symbol::SemiColon),
-        //             Token::Sym(Symbol::RightBrace),
-        //             Token::Sym(Symbol::RightBrace),
-        //         ],
-        //         parsing_token: String::new(),
-        //         is_string_const: false,
-        //     }
-        // );
+        assert_eq!(
+            Tokens::new(
+                r#"
+                class Main {
+                  /** api */
+                  function void main() {
+                    /*
+                     multi line comment
+                     */
+                    do Output.printString("/*hello.*/ world!");
+                    return; // comment
+                  }
+                }
+                                "#
+                .to_string()
+            ),
+            Tokens {
+                tokens: vec![
+                    Token::Key(Keyword::Class),
+                    Token::Identifier("Main".to_string()),
+                    Token::Sym(Symbol::LeftBrace),
+                    Token::Key(Keyword::Function),
+                    Token::Key(Keyword::Void),
+                    Token::Identifier("main".to_string()),
+                    Token::Sym(Symbol::LeftParen),
+                    Token::Sym(Symbol::RightParen),
+                    Token::Sym(Symbol::LeftBrace),
+                    Token::Key(Keyword::Do),
+                    Token::Identifier("Output".to_string()),
+                    Token::Sym(Symbol::Dot),
+                    Token::Identifier("printString".to_string()),
+                    Token::Sym(Symbol::LeftParen),
+                    Token::StringConstant("/*hello.*/ world!".to_string()),
+                    Token::Sym(Symbol::RightParen),
+                    Token::Sym(Symbol::SemiColon),
+                    Token::Key(Keyword::Return),
+                    Token::Sym(Symbol::SemiColon),
+                    Token::Sym(Symbol::RightBrace),
+                    Token::Sym(Symbol::RightBrace),
+                ],
+                parsing_token: String::new(),
+                parsing_string_const: false,
+                current_comment_type: None,
+            }
+        );
     }
 }
