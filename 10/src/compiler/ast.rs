@@ -1,19 +1,35 @@
-use crate::analyzer;
+use crate::analyzer::token;
 
 #[allow(dead_code)]
 struct CompilationEngine {
     // Tokenizerからわたってきた字句解析の結果
-    token: Vec<analyzer::token::Tokens>,
+    token: Vec<token::Tokens>,
 }
 
 impl CompilationEngine {
-    fn new(token: Vec<analyzer::token::Tokens>) -> Self {
+    fn new(token: Vec<token::Tokens>) -> Self {
         Self { token }
     }
 }
 
 struct Ast {
-    classes: Vec<Class>,
+    class: Class,
+}
+
+impl Ast {
+    fn new(tokens: Vec<token::Token>) -> Self {
+        // let index = 1;
+        let class = match tokens.first() {
+            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 1) {
+                Some(class) => class,
+                _ => panic!("{}", invalid_token(&tokens, 1)),
+            },
+            Some(_) => panic!("{}", invalid_token(&tokens, 0)),
+            None => panic!("{}", invalid_token(&tokens, 0)),
+        };
+
+        Self { class }
+    }
 }
 
 /*
@@ -24,11 +40,33 @@ struct Class {
     var_dec: Vec<ClassVarDec>,
     sub_routine_dec: Vec<SubRoutineDec>,
 }
+impl Class {
+    // parse結果と次のトークン読み出し位置を返す
+    fn new(tokens: &Vec<token::Token>, index: usize) -> Option<Self> {
+        let (name, index) = ClassName::new(&tokens, index);
+        let index = {
+            if let Some(token::Token::Sym(token::Symbol::LeftBrace)) = tokens.get(index) {
+                index + 1
+            } else {
+                panic!("{}", invalid_token(tokens, 0))
+            }
+        };
+
+        let (var_dec, index) = ClassVarDec::new(tokens, index);
+        None
+    }
+}
 
 struct ClassVarDec {
     kind: ClassVarKind,
     type_: Type,
     var_names: Vec<VarName>,
+}
+impl ClassVarDec {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Vec<Self>, usize) {
+        ここから(可能な数だけSelfへのparseを試みる。失敗した位置が次の要素の場所なのでそのindexを返す(+1して返さないように注意))
+        (Self { kind, type_, var_names }, index + 1)
+    }
 }
 
 enum ClassVarKind {
@@ -73,9 +111,19 @@ struct VarDec {
     type_: Type,
     var_name: Vec<VarName>,
 }
-struct ClassName(analyzer::token::Identifier);
-struct SubRoutineName(analyzer::token::Identifier);
-struct VarName(analyzer::token::Identifier);
+struct ClassName(token::Identifier);
+impl ClassName {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        if let token::Token::Identifier(token::Identifier(s)) = tokens.get(index).unwrap() {
+            (ClassName(token::Identifier(s.to_string())), index + 1)
+        } else {
+            panic!("{}", invalid_token(tokens, index))
+        }
+    }
+}
+
+struct SubRoutineName(token::Identifier);
+struct VarName(token::Identifier);
 
 /*
  * 文
@@ -146,3 +194,8 @@ struct ExpressionList(Vec<Expression>);
 
 // TODO: Op
 // TODO: UnaryOp
+//
+
+fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
+    format!("invalid token {:?}[@{}]", tokens, index)
+}

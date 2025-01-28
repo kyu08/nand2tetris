@@ -161,7 +161,7 @@ pub enum Token {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct Identifier(String);
+pub struct Identifier(pub String);
 
 impl Token {
     fn to_xml(&self) -> String {
@@ -191,7 +191,7 @@ impl Token {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Keyword {
+pub enum Keyword {
     Class,
     Constructor,
     Function,
@@ -245,25 +245,44 @@ impl Keyword {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-enum Symbol {
+pub enum Symbol {
+    /// {
     LeftBrace,
+    /// }
     RightBrace,
+    /// (
     LeftParen,
+    /// )
     RightParen,
+    /// [
     LeftBracket,
+    /// ]
     RightBracket,
+    /// .
     Dot,
+    /// ,
     Comma,
+    /// ;
     SemiColon,
+    /// +
     Plus,
+    /// -
     Minus,
+    /// *
     Asterisk,
+    /// /
     Slash,
+    /// &
     Ampersand,
+    /// |
     Pipe,
+    /// <
     LessThan,
+    /// >
     MoreThan,
+    /// =
     Equal,
+    /// ~
     Tilde,
 }
 
