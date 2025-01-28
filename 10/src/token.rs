@@ -17,6 +17,9 @@ enum CurrentCommentType {
 
 impl Tokens {
     // トークナイズする関数
+    // NOTE:
+    // リファクタの余地はありそうだが今は本書の内容の理解に優先的に時間を使いたい。
+    // そのためテストさえ通っていればOKとして今はリファクタ（とその検討）をしない。
     pub fn new(source_code: String) -> Self {
         let mut tokens = Tokens {
             tokens: vec![],
