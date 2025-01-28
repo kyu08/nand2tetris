@@ -18,7 +18,6 @@ enum CurrentCommentType {
 impl Tokens {
     // トークナイズする関数
     pub fn new(source_code: String) -> Self {
-        // TODO: IntegerConstant対応する
         let mut tokens = Tokens {
             tokens: vec![],
             parsing_token: "".to_string(),
@@ -130,6 +129,8 @@ impl Tokens {
     fn parse_as_keyword_or_identifier(token: String) -> Token {
         if let Some(k) = Keyword::new(token.clone()) {
             Token::Key(k)
+        } else if let Ok(num) = token.clone().parse::<u32>() {
+            Token::IntegerConstant(num)
         } else {
             Token::Identifier(token)
         }
@@ -276,6 +277,7 @@ mod test {
                 r#"class Main {
                   function void main() {
                     do Output.printString("hello. world!");
+                    let x = 100;
                     return;
                   }
                 }
@@ -300,6 +302,11 @@ mod test {
                     Token::Sym(Symbol::LeftParen),
                     Token::StringConstant("hello. world!".to_string()),
                     Token::Sym(Symbol::RightParen),
+                    Token::Sym(Symbol::SemiColon),
+                    Token::Key(Keyword::Let),
+                    Token::Identifier("x".to_string()),
+                    Token::Sym(Symbol::Equal),
+                    Token::IntegerConstant(100),
                     Token::Sym(Symbol::SemiColon),
                     Token::Key(Keyword::Return),
                     Token::Sym(Symbol::SemiColon),
