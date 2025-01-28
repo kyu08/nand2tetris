@@ -316,6 +316,7 @@ impl Symbol {
     }
 }
 
+// TODO: ファイル名、module構成を再考する
 #[allow(dead_code)]
 struct CompilationEngine {
     // Tokenizerからわたってきた字句解析結果
