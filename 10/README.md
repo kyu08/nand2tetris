@@ -24,11 +24,13 @@
         ```
     - [x] `test_data/Square/SquareGameT.xml`
     - [x] `test_data/Square/MainT.xml`
-- [ ] コンパイルエンジンを実装
-- [ ] コンパイルエンジンのテストをパスすることを確認
+- [ ] コンパイルエンジンを実装(式と配列以外)
+- [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ExpressionLessSquare/Main.xml`
     - [ ] `test_data/ExpressionLessSquare/SquareGame.xml`
     - [ ] `test_data/ExpressionLessSquare/Square.xml`
+- [ ] コンパイルエンジンの残りの部分を実装(式と配列)
+- [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ArrayTest/Main.xml`
     - [ ] `test_data/Square/Main.xml`
     - [ ] `test_data/Square/SquareGame.xml`
