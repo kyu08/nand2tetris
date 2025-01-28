@@ -1,58 +1,65 @@
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tokens {
     tokens: Vec<Token>,
+    parsing_token: String,
+    is_string_const: bool,
 }
 
 impl Tokens {
+    // トークナイズする関数
     pub fn new(source_code: String) -> Self {
-        let mut tokens: Vec<Token> = vec![];
-        // 解析途中のトークンのデータを保持する。トークンの終端が見つかったら空文字列にリセットする。
-        let mut parsing_token = "".to_string();
-        let mut is_string_const = false;
+        let mut tokens = Tokens {
+            tokens: vec![],
+            parsing_token: "".to_string(),
+            is_string_const: false,
+        };
 
         for char in source_code.chars() {
             if char == '"' {
                 // 文字列の始点
-                if !is_string_const {
-                    is_string_const = true;
+                if !tokens.is_string_const {
+                    tokens.toggle_is_string_const();
                 } else {
                     // 文字列の終端
-                    tokens.push(Token::StringConstant(parsing_token));
-                    parsing_token = String::new();
-                    is_string_const = false;
+                    let token = Token::StringConstant(tokens.parsing_token.clone());
+                    tokens.push_token(token);
+                    tokens.toggle_is_string_const();
                 }
                 continue;
             }
 
             if let Some(c) = Symbol::new(char) {
-                if !is_string_const {
-                    if !parsing_token.is_empty() {
-                        tokens.push(Self::parse_token(parsing_token));
-                        parsing_token = String::new();
+                if !tokens.is_string_const {
+                    if !tokens.parsing_token.is_empty() {
+                        let token = Self::parse_as_keyword_or_identifier(tokens.parsing_token.clone());
+                        tokens.push_token(token);
                     }
-                    tokens.push(Token::Sym(c));
+                    tokens.tokens.push(Token::Sym(c));
                     continue;
                 }
             }
 
             if char.is_whitespace() {
-                if is_string_const {
-                    parsing_token += &char.to_string();
+                if tokens.is_string_const {
+                    tokens.parsing_token += &char.to_string();
                     continue;
                 }
-                if !parsing_token.is_empty() {
-                    tokens.push(Self::parse_token(parsing_token));
-                    parsing_token = String::new();
+                if !tokens.parsing_token.is_empty() {
+                    let token = Self::parse_as_keyword_or_identifier(tokens.parsing_token.clone());
+                    tokens.push_token(token);
                     continue;
                 }
                 continue;
             }
 
-            parsing_token += &char.to_string();
+            tokens.parsing_token += &char.to_string();
         }
-        // EOFまでいったらparse結果をxmlとして出力する
 
-        Self { tokens }
+        tokens
+    }
+
+    fn toggle_is_string_const(&mut self) {
+        self.is_string_const = !self.is_string_const;
     }
 
     pub fn to_xml(&self) -> String {
@@ -61,12 +68,17 @@ impl Tokens {
         result
     }
 
-    fn parse_token(token: String) -> Token {
+    fn parse_as_keyword_or_identifier(token: String) -> Token {
         if let Some(k) = Keyword::new(token.clone()) {
             Token::Key(k)
         } else {
             Token::Identifier(token)
         }
+    }
+
+    fn push_token(&mut self, token: Token) {
+        self.tokens.push(token);
+        self.parsing_token = String::new();
     }
 }
 
@@ -233,8 +245,56 @@ mod test {
                     Token::Sym(Symbol::SemiColon),
                     Token::Sym(Symbol::RightBrace),
                     Token::Sym(Symbol::RightBrace),
-                ]
+                ],
+                parsing_token: String::new(),
+                is_string_const: false,
             }
         );
+
+        // program with comments
+        // assert_eq!(
+        //     Tokens::new(
+        //         r#"
+        //         class Main {
+        //           /** api comment */
+        //           function void main() {
+        //             /*
+        //              multi line comment
+        //              */
+        //             do Output.printString("hello. world!");
+        //             return; // comment
+        //           }
+        //         }
+        //                         "#
+        //         .to_string()
+        //     ),
+        //     Tokens {
+        //         tokens: vec![
+        //             Token::Key(Keyword::Class),
+        //             Token::Identifier("Main".to_string()),
+        //             Token::Sym(Symbol::LeftBrace),
+        //             Token::Key(Keyword::Function),
+        //             Token::Key(Keyword::Void),
+        //             Token::Identifier("main".to_string()),
+        //             Token::Sym(Symbol::LeftParen),
+        //             Token::Sym(Symbol::RightParen),
+        //             Token::Sym(Symbol::LeftBrace),
+        //             Token::Key(Keyword::Do),
+        //             Token::Identifier("Output".to_string()),
+        //             Token::Sym(Symbol::Dot),
+        //             Token::Identifier("printString".to_string()),
+        //             Token::Sym(Symbol::LeftParen),
+        //             Token::StringConstant("hello. world!".to_string()),
+        //             Token::Sym(Symbol::RightParen),
+        //             Token::Sym(Symbol::SemiColon),
+        //             Token::Key(Keyword::Return),
+        //             Token::Sym(Symbol::SemiColon),
+        //             Token::Sym(Symbol::RightBrace),
+        //             Token::Sym(Symbol::RightBrace),
+        //         ],
+        //         parsing_token: String::new(),
+        //         is_string_const: false,
+        //     }
+        // );
     }
 }
