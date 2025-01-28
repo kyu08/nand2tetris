@@ -8,9 +8,13 @@
             && diff -w -B test_data/ExpressionLessSquare/SquareT.xml test_data/ExpressionLessSquare/Square.gen.xml \
             && diff -w -B test_data/ExpressionLessSquare/SquareGameT.xml test_data/ExpressionLessSquare/SquareGame.gen.xml 
         ```
-    - [ ] `test_data/ExpressionLessSquare/SquareGameT.xml`
-    - [ ] `test_data/ExpressionLessSquare/MainT.xml`
-    - [ ] `test_data/ArrayTest/MainT.xml`
+    - [x] `test_data/ExpressionLessSquare/SquareGameT.xml`
+    - [x] `test_data/ExpressionLessSquare/MainT.xml`
+    - [x] `test_data/ArrayTest/MainT.xml`
+        ```sh
+        cargo run test_data/ArrayTest/ \
+            && diff -w -B test_data/ArrayTest/MainT.xml test_data/ArrayTest/Main.gen.xml
+        ```
     - [ ] `test_data/Square/SquareT.xml`
     - [ ] `test_data/Square/SquareGameT.xml`
     - [ ] `test_data/Square/MainT.xml`

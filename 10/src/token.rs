@@ -169,7 +169,7 @@ impl Token {
             }
             Self::Sym(v) => {
                 let tag_name = "symbol";
-                format!("<{}> {} </{}>", tag_name, v.to_char(), tag_name)
+                format!("<{}> {} </{}>", tag_name, v.to_string(), tag_name)
             }
             Self::IntegerConstant(v) => {
                 let tag_name = "integerConstant";
@@ -290,27 +290,28 @@ impl Symbol {
         }
     }
 
-    fn to_char(&self) -> char {
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
         match self {
-            Symbol::LeftBrace => '{',
-            Symbol::RightBrace => '}',
-            Symbol::LeftParen => '(',
-            Symbol::RightParen => ')',
-            Symbol::LeftBracket => '[',
-            Symbol::RightBracket => ']',
-            Symbol::Dot => '.',
-            Symbol::Comma => ',',
-            Symbol::SemiColon => ';',
-            Symbol::Plus => '+',
-            Symbol::Minus => '-',
-            Symbol::Asterisk => '*',
-            Symbol::Slash => '/',
-            Symbol::Ampersand => '&',
-            Symbol::Pipe => '|',
-            Symbol::MoreThan => '>',
-            Symbol::LessThan => '<',
-            Symbol::Equal => '=',
-            Symbol::Tilde => '~',
+            Symbol::LeftBrace => "{".to_string(),
+            Symbol::RightBrace => "}".to_string(),
+            Symbol::LeftParen => "(".to_string(),
+            Symbol::RightParen => ")".to_string(),
+            Symbol::LeftBracket => "[".to_string(),
+            Symbol::RightBracket => "]".to_string(),
+            Symbol::Dot => ".".to_string(),
+            Symbol::Comma => ",".to_string(),
+            Symbol::SemiColon => ";".to_string(),
+            Symbol::Plus => "+".to_string(),
+            Symbol::Minus => "-".to_string(),
+            Symbol::Asterisk => "*".to_string(),
+            Symbol::Slash => "/".to_string(),
+            Symbol::Ampersand => "&amp;".to_string(),
+            Symbol::Pipe => "|".to_string(),
+            Symbol::MoreThan => "&gt;".to_string(),
+            Symbol::LessThan => "&lt;".to_string(),
+            Symbol::Equal => "=".to_string(),
+            Symbol::Tilde => "~".to_string(),
         }
     }
 }
