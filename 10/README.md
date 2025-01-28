@@ -1,6 +1,6 @@
 ## TODO
 - [x] トークナイザを実装
-- [ ] トークナイザのテストをパスすることを確認
+- [x] トークナイザのテストをパスすることを確認
     - [x] `test_data/ExpressionLessSquare/SquareT.xml`
         ```sh
         cargo run test_data/ExpressionLessSquare/ \
@@ -15,9 +15,15 @@
         cargo run test_data/ArrayTest/ \
             && diff -w -B test_data/ArrayTest/MainT.xml test_data/ArrayTest/Main.gen.xml
         ```
-    - [ ] `test_data/Square/SquareT.xml`
-    - [ ] `test_data/Square/SquareGameT.xml`
-    - [ ] `test_data/Square/MainT.xml`
+    - [x] `test_data/Square/SquareT.xml`
+        ```sh
+        cargo run test_data/Square/ \
+            && diff -w -B test_data/Square/MainT.xml test_data/Square/Main.gen.xml \
+            && diff -w -B test_data/Square/SquareT.xml test_data/Square/Square.gen.xml \
+            && diff -w -B test_data/Square/SquareGameT.xml test_data/Square/SquareGame.gen.xml 
+        ```
+    - [x] `test_data/Square/SquareGameT.xml`
+    - [x] `test_data/Square/MainT.xml`
 - [ ] コンパイルエンジンを実装
 - [ ] コンパイルエンジンのテストをパスすることを確認
     - [ ] `test_data/ExpressionLessSquare/Main.xml`
