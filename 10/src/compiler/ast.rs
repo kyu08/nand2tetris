@@ -396,8 +396,11 @@ struct Expression {
     // op_term: Vec<(Op, Term)>,
 }
 impl Expression {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-        (Self { term: todo!() }, index)
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+        match Term::new(tokens, index) {
+            (Some(t), i) => (Some(Self { term: Box::new(t) }), i),
+            _ => (None, index),
+        }
     }
 }
 
@@ -410,6 +413,29 @@ enum Term {
     Expression(Expression),
     SubroutineCall(SubroutineCall),
     // TODO: あとで拡張する
+}
+impl Term {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+        match tokens.get(index) {
+            Some(token::Token::IntegerConstant(i)) => (Some(Term::IntegerConstant(i.clone())), index + 1),
+            Some(token::Token::StringConstant(s)) => (Some(Term::StringConstant(s.clone())), index + 1),
+            Some(token::Token::Key(token::Keyword::True)) => {
+                (Some(Term::KeyWordConstant(KeyWordConstant::True)), index + 1)
+            }
+            Some(token::Token::Key(token::Keyword::False)) => {
+                (Some(Term::KeyWordConstant(KeyWordConstant::False)), index + 1)
+            }
+            Some(token::Token::Key(token::Keyword::Null)) => {
+                (Some(Term::KeyWordConstant(KeyWordConstant::Null)), index + 1)
+            }
+            Some(token::Token::Key(token::Keyword::This)) => {
+                (Some(Term::KeyWordConstant(KeyWordConstant::This)), index + 1)
+            }
+            Some(token::Token::Identifier(i)) => (Some(Term::VarName(VarName(i.clone()))), index + 1),
+            // TODO: SubroutineCallはあとで実装する
+            _ => Term::new(tokens, index),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -436,48 +462,30 @@ enum Receiver {
 #[derive(Debug, PartialEq, Eq)]
 struct ExpressionList(Vec<Expression>);
 impl ExpressionList {
-    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-    //     let var_name_hoge_should_rename = match tokens.get(index) {
-    //         Some(token::Token::Identifier(i)) => {
-    //             index += 1;
-    //             VarName(token::Identifier(i.clone().0))
-    //         }
-    //         _ => panic!("{}", invalid_token(tokens, index)),
-    //     };
-    //
-    //     (Self(vec![]), index)
-    // }
-
     // 無
     // expression
     // expression, expression, ..., expression
-    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-    //     let mut index = index;
-    //     let mut param_list = vec![];
-    //     while let (Some(type_), returned_index) = Type::new(tokens, index) {
-    //         index = returned_index;
-    //
-    //         let var_name = match tokens.get(index) {
-    //             Some(token::Token::Identifier(i)) => {
-    //                 index += 1;
-    //                 VarName(token::Identifier(i.clone().0))
-    //             }
-    //             _ => panic!("{}", invalid_token(tokens, index)),
-    //         };
-    //
-    //         param_list.push((type_, var_name));
-    //
-    //         // `,`があるときだけ継続
-    //         match tokens.get(index) {
-    //             Some(token::Token::Sym(token::Symbol::Comma)) => {
-    //                 index += 1;
-    //             }
-    //             _ => break,
-    //         }
-    //     }
-    //
-    //     (Self(param_list), index)
-    // }
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+        let (expression, index) = match Expression::new(tokens, index) {
+            (Some(expression), returned_index) => (expression, returned_index),
+            _ => return (None, index),
+        };
+
+        let mut index = index;
+        let mut expression_list = vec![expression];
+        while let Some(token::Token::Sym(token::Symbol::Comma)) = tokens.get(index) {
+            index += 1;
+            match Expression::new(tokens, index) {
+                (Some(expression), returned_index) => {
+                    index = returned_index;
+                    expression_list.push(expression);
+                }
+                _ => return (Some(Self(expression_list)), index),
+            }
+        }
+
+        (Some(Self(expression_list)), index)
+    }
 }
 
 // TODO: Op
@@ -491,6 +499,7 @@ fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+    use token::IntegerConstant;
 
     #[test]
     fn test_class_var_dec_new() {
@@ -713,6 +722,52 @@ mod test {
         */
         let input = ParameterList::new(&vec![], 0);
         let expected = (ParameterList(vec![]), 0);
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_expression_list_new() {
+        /*
+            true, false
+        */
+        let input = ExpressionList::new(
+            &vec![
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Key(token::Keyword::False),
+            ],
+            0,
+        );
+        let expected = (
+            Some(ExpressionList(vec![
+                Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::False)),
+                },
+            ])),
+            3,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            1
+        */
+        let input = ExpressionList::new(&vec![token::Token::IntegerConstant(token::IntegerConstant(1))], 0);
+        let expected = (
+            Some(ExpressionList(vec![Expression {
+                term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+            }])),
+            1,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            (引数なし)
+        */
+        let input = ExpressionList::new(&vec![], 0);
+        let expected = (None, 0);
         assert_eq!(input, expected);
     }
 }
