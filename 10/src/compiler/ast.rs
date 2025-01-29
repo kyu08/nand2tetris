@@ -36,14 +36,15 @@ impl Ast {
  * プログラムの構造
  */
 struct Class {
-    name: String,
+    name: ClassName,
     var_dec: Vec<ClassVarDec>,
     sub_routine_dec: Vec<SubRoutineDec>,
 }
 impl Class {
     // parse結果と次のトークン読み出し位置を返す
     fn new(tokens: &Vec<token::Token>, index: usize) -> Option<Self> {
-        let (name, index) = ClassName::new(&tokens, index);
+        // `class`は取得できているものと仮定
+        let (name, index) = ClassName::new(tokens, index);
         let index = {
             if let Some(token::Token::Sym(token::Symbol::LeftBrace)) = tokens.get(index) {
                 index + 1
@@ -53,10 +54,15 @@ impl Class {
         };
 
         let (var_dec, index) = ClassVarDec::new(tokens, index);
-        None
+        Some(Class {
+            name,
+            var_dec,
+            sub_routine_dec: vec![],
+        })
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct ClassVarDec {
     kind: ClassVarKind,
     type_: Type,
@@ -123,7 +129,7 @@ impl ClassVarDec {
 
             // 最後にセミコロンがあることをチェック
             match tokens.get(index) {
-                Some(token::Token::Sym(token::Symbol::Comma)) => index += 1,
+                Some(token::Token::Sym(token::Symbol::SemiColon)) => index += 1,
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
 
@@ -135,11 +141,13 @@ impl ClassVarDec {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum ClassVarKind {
     Static,
     Field,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum Type {
     Int,
     Char,
@@ -153,6 +161,11 @@ struct SubRoutineDec {
     sub_routine_name: String,
     parameter_list: Vec<ParameterList>,
     body: SubRoutineBody,
+}
+impl SubRoutineDec {
+    fn new() -> (Vec<Self>, usize) {
+        (vec![], 0)
+    }
 }
 
 enum SubRoutineDecKind {
@@ -189,6 +202,7 @@ impl ClassName {
 }
 
 struct SubRoutineName(token::Identifier);
+#[derive(Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
 
 /*
@@ -260,8 +274,59 @@ struct ExpressionList(Vec<Expression>);
 
 // TODO: Op
 // TODO: UnaryOp
-//
 
 fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
     format!("invalid token {:?}[@{}]", tokens, index)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_class_var_dec_new() {
+        /*
+        class SquareGame {
+           field int x;
+           static bool y, z;
+        */
+        let input = ClassVarDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Class),
+                token::Token::Identifier(token::Identifier("Main".to_string())),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Field),
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Static),
+                token::Token::Key(token::Keyword::Boolean),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("z".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            3,
+        );
+        let expected = (
+            vec![
+                ClassVarDec {
+                    kind: ClassVarKind::Field,
+                    type_: Type::Int,
+                    var_names: vec![VarName(token::Identifier("x".to_string()))],
+                },
+                ClassVarDec {
+                    kind: ClassVarKind::Static,
+                    type_: Type::Boolean,
+                    var_names: vec![
+                        VarName(token::Identifier("y".to_string())),
+                        VarName(token::Identifier("z".to_string())),
+                    ],
+                },
+            ],
+            13,
+        );
+        assert_eq!(input, expected);
+    }
 }
