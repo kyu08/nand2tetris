@@ -160,7 +160,7 @@ pub enum Token {
     Identifier(Identifier),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier(pub String);
 
 impl Token {

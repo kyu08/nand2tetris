@@ -64,8 +64,74 @@ struct ClassVarDec {
 }
 impl ClassVarDec {
     fn new(tokens: &Vec<token::Token>, index: usize) -> (Vec<Self>, usize) {
-        ここから(可能な数だけSelfへのparseを試みる。失敗した位置が次の要素の場所なのでそのindexを返す(+1して返さないように注意))
-        (Self { kind, type_, var_names }, index + 1)
+        let mut class_var_decs = vec![];
+        let mut index = index;
+        loop {
+            let kind = match tokens.get(index) {
+                Some(token::Token::Key(token::Keyword::Static)) => {
+                    index += 1;
+                    ClassVarKind::Static
+                }
+                Some(token::Token::Key(token::Keyword::Field)) => {
+                    index += 1;
+                    ClassVarKind::Field
+                }
+                _ => break,
+            };
+
+            let type_ = match tokens.get(index) {
+                Some(token::Token::Key(token::Keyword::Int)) => {
+                    index += 1;
+                    Type::Int
+                }
+                Some(token::Token::Key(token::Keyword::Char)) => {
+                    index += 1;
+                    Type::Char
+                }
+                Some(token::Token::Key(token::Keyword::Boolean)) => {
+                    index += 1;
+                    Type::Boolean
+                }
+                Some(token::Token::Identifier(id)) => {
+                    index += 1;
+                    Type::ClassName(id.0.clone())
+                }
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            let var_name = match tokens.get(index) {
+                Some(token::Token::Identifier(id)) => {
+                    index += 1;
+                    VarName(id.clone())
+                }
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            // このあとは `, varName`が任意の回数続く。
+            let mut var_names = vec![var_name];
+            while let Some(token::Token::Sym(token::Symbol::Comma)) = tokens.get(index) {
+                index += 1; // , が取得できたのでindexを1進める
+
+                match tokens.get(index) {
+                    Some(token::Token::Identifier(id)) => {
+                        index += 1;
+                        var_names.push(VarName(id.clone()))
+                    }
+                    _ => panic!("{}", invalid_token(tokens, index)),
+                }
+            }
+
+            // 最後にセミコロンがあることをチェック
+            match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::Comma)) => index += 1,
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            class_var_decs.push(Self { kind, type_, var_names });
+        }
+
+        // ここから(可能な数だけSelfへのparseを試みる。失敗した位置が次の要素の場所なのでそのindexを返す(+1して返さないように注意))
+        (class_var_decs, index)
     }
 }
 
