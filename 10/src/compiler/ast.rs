@@ -162,6 +162,17 @@ enum Type {
     Boolean,
     ClassName(String),
 }
+impl Type {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Int)) => (Some(Type::Int), index + 1),
+            Some(token::Token::Key(token::Keyword::Char)) => (Some(Type::Char), index + 1),
+            Some(token::Token::Key(token::Keyword::Boolean)) => (Some(Type::Boolean), index + 1),
+            Some(token::Token::Identifier(i)) => (Some(Type::ClassName(i.0.clone())), index + 1),
+            _ => (None, index),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineDec {
@@ -197,6 +208,38 @@ enum SubroutineDecType {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ParameterList(Vec<(Type, VarName)>);
+impl ParameterList {
+    // パターンメモ
+    // ``: 引数なし
+    // `type var_name, type var_name, ..., type var_name`: n個の引数
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let mut index = index;
+        let mut param_list = vec![];
+        while let (Some(type_), returned_index) = Type::new(tokens, index) {
+            index = returned_index;
+
+            let var_name = match tokens.get(index) {
+                Some(token::Token::Identifier(i)) => {
+                    index += 1;
+                    VarName(token::Identifier(i.clone().0))
+                }
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            param_list.push((type_, var_name));
+
+            // `,`があるときだけ継続
+            match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::Comma)) => {
+                    index += 1;
+                }
+                _ => break,
+            }
+        }
+
+        (Self(param_list), index)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineBody {
@@ -438,6 +481,57 @@ mod test {
             }],
             13,
         );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_type_new() {
+        let input = Type::new(&vec![token::Token::Key(token::Keyword::Int)], 0);
+        let expected = (Some(Type::Int), 1);
+        assert_eq!(input, expected);
+
+        let input = Type::new(&vec![token::Token::Key(token::Keyword::Char)], 0);
+        let expected = (Some(Type::Char), 1);
+        assert_eq!(input, expected);
+
+        let input = Type::new(&vec![token::Token::Key(token::Keyword::Boolean)], 0);
+        let expected = (Some(Type::Boolean), 1);
+        assert_eq!(input, expected);
+
+        let input = Type::new(&vec![token::Token::Identifier(token::Identifier("main".to_string()))], 0);
+        let expected = (Some(Type::ClassName("main".to_string())), 1);
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_parameter_list_new() {
+        /*
+          int x, char y
+        */
+        let input = ParameterList::new(
+            &vec![
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Key(token::Keyword::Char),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+            ],
+            0,
+        );
+        let expected = (
+            ParameterList(vec![
+                (Type::Int, VarName(token::Identifier("x".to_string()))),
+                (Type::Char, VarName(token::Identifier("y".to_string()))),
+            ]),
+            5,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            (引数なし)
+        */
+        let input = ParameterList::new(&vec![], 0);
+        let expected = (ParameterList(vec![]), 0);
         assert_eq!(input, expected);
     }
 }
