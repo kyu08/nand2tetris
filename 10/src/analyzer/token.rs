@@ -92,7 +92,7 @@ impl Tokens {
                     tokens.toggle_is_string_const();
                 } else {
                     // 文字列の終端
-                    let token = Token::StringConstant(tokens.parsing_token.clone());
+                    let token = Token::StringConstant(StringConstant(tokens.parsing_token.clone()));
                     tokens.push_token(token);
                     tokens.toggle_is_string_const();
                 }
@@ -135,7 +135,7 @@ impl Tokens {
         if let Some(k) = Keyword::new(token.clone()) {
             Token::Key(k)
         } else if let Ok(num) = token.clone().parse::<u32>() {
-            Token::IntegerConstant(num)
+            Token::IntegerConstant(IntegerConstant(num))
         } else {
             Token::Identifier(Identifier(token))
         }
@@ -155,11 +155,15 @@ impl Tokens {
 pub enum Token {
     Key(Keyword),
     Sym(Symbol),
-    IntegerConstant(u32),
-    StringConstant(String),
+    IntegerConstant(IntegerConstant),
+    StringConstant(StringConstant),
     Identifier(Identifier),
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct IntegerConstant(pub u32);
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct StringConstant(pub String);
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier(pub String);
 
@@ -174,11 +178,11 @@ impl Token {
                 let tag_name = "symbol";
                 format!("<{}> {} </{}>", tag_name, v.to_string(), tag_name)
             }
-            Self::IntegerConstant(v) => {
+            Self::IntegerConstant(IntegerConstant(v)) => {
                 let tag_name = "integerConstant";
                 format!("<{}> {} </{}>", tag_name, v, tag_name)
             }
-            Self::StringConstant(v) => {
+            Self::StringConstant(StringConstant(v)) => {
                 let tag_name = "stringConstant";
                 format!("<{}> {} </{}>", tag_name, v, tag_name)
             }
@@ -372,13 +376,13 @@ mod test {
                     Token::Sym(Symbol::Dot),
                     Token::Identifier(Identifier("printString".to_string())),
                     Token::Sym(Symbol::LeftParen),
-                    Token::StringConstant("hello. world!".to_string()),
+                    Token::StringConstant(StringConstant("hello. world!".to_string())),
                     Token::Sym(Symbol::RightParen),
                     Token::Sym(Symbol::SemiColon),
                     Token::Key(Keyword::Let),
                     Token::Identifier(Identifier("x".to_string())),
                     Token::Sym(Symbol::Equal),
-                    Token::IntegerConstant(100),
+                    Token::IntegerConstant(IntegerConstant(100)),
                     Token::Sym(Symbol::SemiColon),
                     Token::Key(Keyword::Return),
                     Token::Sym(Symbol::SemiColon),
@@ -424,7 +428,7 @@ mod test {
                     Token::Sym(Symbol::Dot),
                     Token::Identifier(Identifier("printString".to_string())),
                     Token::Sym(Symbol::LeftParen),
-                    Token::StringConstant("/*hello.*/ world!".to_string()),
+                    Token::StringConstant(StringConstant("/*hello.*/ world!".to_string())),
                     Token::Sym(Symbol::RightParen),
                     Token::Sym(Symbol::SemiColon),
                     Token::Key(Keyword::Return),

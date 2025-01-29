@@ -18,7 +18,6 @@ struct Ast {
 
 impl Ast {
     fn new(tokens: Vec<token::Token>) -> Self {
-        // let index = 1;
         let class = match tokens.first() {
             Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 1) {
                 Some(class) => class,
@@ -41,7 +40,7 @@ struct Class {
     subroutine_dec: Vec<SubroutineDec>,
 }
 impl Class {
-    // parse結果と次のトークン読み出し位置を返す
+    // parse結果を返す
     fn new(tokens: &Vec<token::Token>, index: usize) -> Option<Self> {
         // `class`は取得できているものと仮定
         let (name, index) = ClassName::new(tokens, index);
@@ -77,6 +76,7 @@ struct ClassVarDec {
     var_names: Vec<VarName>,
 }
 impl ClassVarDec {
+    // parse結果と次のトークンの読み出し位置を返す
     fn new(tokens: &Vec<token::Token>, index: usize) -> (Vec<Self>, usize) {
         let mut class_var_decs = vec![];
         let mut index = index;
@@ -246,12 +246,67 @@ struct SubroutineBody {
     var_dec: Vec<VarDec>,
     statements: Vec<Statement>,
 }
+impl SubroutineBody {
+    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    //     // TODO: {があることを確認
+    //     // TODO: var_decをn個パース
+    //     // TODO: statementsをパース
+    //     // TODO: }があることを確認
+    //     (Self { var_dec, statements }, index)
+    // }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct VarDec {
     type_: Type,
     var_name: Vec<VarName>,
 }
+impl VarDec {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let mut index = index;
+        let mut var_name = vec![];
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Var)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let (type_, index) = match Type::new(tokens, index) {
+            (Some(t), i) => (t, i),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let mut index = match tokens.get(index) {
+            Some(token::Token::Identifier(token::Identifier(id))) => {
+                var_name.push(VarName(token::Identifier(id.clone())));
+                index + 1
+            }
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        while let Some(token::Token::Sym(token::Symbol::Comma)) = tokens.get(index) {
+            index += 1;
+
+            let var_name_hoge_should_rename = match tokens.get(index) {
+                Some(token::Token::Identifier(i)) => {
+                    index += 1;
+                    VarName(token::Identifier(i.clone().0))
+                }
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            var_name.push(var_name_hoge_should_rename);
+        }
+
+        // 最後にセミコロンがあることをチェック
+        match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::SemiColon)) => index += 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (Self { type_, var_name }, index)
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 struct ClassName(token::Identifier);
 impl ClassName {
@@ -273,6 +328,12 @@ struct VarName(token::Identifier);
  */
 #[derive(Debug, PartialEq, Eq)]
 struct Statements(Vec<Statement>);
+// impl Statements {
+//     fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+//         (Statements(vec![]), index)
+//     }
+// }
+
 #[derive(Debug, PartialEq, Eq)]
 enum Statement {
     Let(LetStatement),
@@ -281,6 +342,11 @@ enum Statement {
     Do(DoStatement),
     Return(ReturnStatement),
 }
+impl Statement {
+    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    //     (Statement::Let(()), index)
+    // }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct LetStatement {
@@ -288,6 +354,17 @@ struct LetStatement {
     // index: Option<Expression>,
     right_hand_side: Expression,
 }
+// impl LetStatement {
+//     fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+//         (
+//             Self {
+//                 var_name,
+//                 right_hand_side,
+//             },
+//             index,
+//         )
+//     }
+// }
 
 #[derive(Debug, PartialEq, Eq)]
 struct IfStatement {
@@ -313,14 +390,25 @@ struct ReturnStatement(Option<Expression>);
  */
 #[derive(Debug, PartialEq, Eq)]
 struct Expression {
-    term: Term,
+    // 循環参照になってしまうのでBoxでくるんでいる
+    term: Box<Term>,
     // TODO: あとでコメントインする
     // op_term: Vec<(Op, Term)>,
+}
+impl Expression {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        (Self { term: todo!() }, index)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 enum Term {
-    KeyWordConstant,
+    IntegerConstant(token::IntegerConstant),
+    StringConstant(token::StringConstant),
+    KeyWordConstant(KeyWordConstant),
+    VarName(VarName),
+    Expression(Expression),
+    SubroutineCall(SubroutineCall),
     // TODO: あとで拡張する
 }
 
@@ -334,8 +422,8 @@ enum KeyWordConstant {
 
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineCall {
-    name: String,
     receiver: Option<Receiver>,
+    name: String,
     arguments: Vec<ExpressionList>,
 }
 
@@ -347,6 +435,50 @@ enum Receiver {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ExpressionList(Vec<Expression>);
+impl ExpressionList {
+    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    //     let var_name_hoge_should_rename = match tokens.get(index) {
+    //         Some(token::Token::Identifier(i)) => {
+    //             index += 1;
+    //             VarName(token::Identifier(i.clone().0))
+    //         }
+    //         _ => panic!("{}", invalid_token(tokens, index)),
+    //     };
+    //
+    //     (Self(vec![]), index)
+    // }
+
+    // 無
+    // expression
+    // expression, expression, ..., expression
+    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    //     let mut index = index;
+    //     let mut param_list = vec![];
+    //     while let (Some(type_), returned_index) = Type::new(tokens, index) {
+    //         index = returned_index;
+    //
+    //         let var_name = match tokens.get(index) {
+    //             Some(token::Token::Identifier(i)) => {
+    //                 index += 1;
+    //                 VarName(token::Identifier(i.clone().0))
+    //             }
+    //             _ => panic!("{}", invalid_token(tokens, index)),
+    //         };
+    //
+    //         param_list.push((type_, var_name));
+    //
+    //         // `,`があるときだけ継続
+    //         match tokens.get(index) {
+    //             Some(token::Token::Sym(token::Symbol::Comma)) => {
+    //                 index += 1;
+    //             }
+    //             _ => break,
+    //         }
+    //     }
+    //
+    //     (Self(param_list), index)
+    // }
+}
 
 // TODO: Op
 // TODO: UnaryOp
@@ -500,6 +632,55 @@ mod test {
 
         let input = Type::new(&vec![token::Token::Identifier(token::Identifier("main".to_string()))], 0);
         let expected = (Some(Type::ClassName("main".to_string())), 1);
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_var_dec_new() {
+        // var MyType foo;
+        let input = VarDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Var),
+                token::Token::Identifier(token::Identifier("MyType".to_string())),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (
+            VarDec {
+                type_: Type::ClassName("MyType".to_string()),
+                var_name: vec![VarName(token::Identifier("foo".to_string()))],
+            },
+            4,
+        );
+        assert_eq!(input, expected);
+
+        // var int x, y, z;
+        let input = VarDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Var),
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("z".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (
+            VarDec {
+                type_: Type::Int,
+                var_name: vec![
+                    VarName(token::Identifier("x".to_string())),
+                    VarName(token::Identifier("y".to_string())),
+                    VarName(token::Identifier("z".to_string())),
+                ],
+            },
+            8,
+        );
         assert_eq!(input, expected);
     }
 
