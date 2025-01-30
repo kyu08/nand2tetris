@@ -330,10 +330,10 @@ struct VarName(token::Identifier);
 #[derive(Debug, PartialEq, Eq)]
 struct Statements(Vec<Statement>);
 impl Statements {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
         let mut statements = vec![];
         let mut index = index;
-        while let (Some(s), returned_index) = Statement::new(tokens, index) {
+        while let (Some(s), returned_index) = Statement::new(tokens, index, class_name) {
             statements.push(s);
             index = returned_index;
         }
@@ -351,19 +351,23 @@ enum Statement {
     Return(ReturnStatement),
 }
 impl Statement {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Let)) => {
                 let (l, i) = LetStatement::new(tokens, index);
                 (Some(Self::Let(l)), i)
             }
             Some(token::Token::Key(token::Keyword::If)) => {
-                let (l, i) = IfStatement::new(tokens, index);
+                let (l, i) = IfStatement::new(tokens, index, class_name);
                 (Some(Self::If(l)), i)
             }
             Some(token::Token::Key(token::Keyword::While)) => {
-                let (l, i) = WhileStatement::new(tokens, index);
+                let (l, i) = WhileStatement::new(tokens, index, class_name);
                 (Some(Self::While(l)), i)
+            }
+            Some(token::Token::Key(token::Keyword::Do)) => {
+                let (l, i) = DoStatement::new(tokens, index, class_name);
+                (Some(Self::Do(l)), i)
             }
             // TODO: 随時ほかのvariantを実装する
             _ => (None, index),
@@ -420,7 +424,7 @@ struct IfStatement {
     negative_case_body: Option<Statements>,
 }
 impl IfStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::If)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -442,7 +446,7 @@ impl IfStatement {
             Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (positive_case_body, index) = Statements::new(tokens, index);
+        let (positive_case_body, index) = Statements::new(tokens, index, class_name);
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -458,7 +462,7 @@ impl IfStatement {
                     _ => panic!("{}", invalid_token(tokens, index)),
                 };
                 let (negative_case_body, index) = {
-                    let (statements, index) = Statements::new(tokens, index);
+                    let (statements, index) = Statements::new(tokens, index, class_name);
                     if statements.0.is_empty() {
                         (None, index)
                     } else {
@@ -497,7 +501,7 @@ struct WhileStatement {
     body: Statements,
 }
 impl WhileStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::While)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -519,7 +523,7 @@ impl WhileStatement {
             Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (body, index) = Statements::new(tokens, index);
+        let (body, index) = Statements::new(tokens, index, class_name);
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -531,6 +535,21 @@ impl WhileStatement {
 
 #[derive(Debug, PartialEq, Eq)]
 struct DoStatement(SubroutineCall);
+impl DoStatement {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Do)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (subroutine_call, index) = SubroutineCall::new(tokens, index, class_name);
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::SemiColon)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (Self(subroutine_call), index)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct ReturnStatement(Option<Expression>);
@@ -1174,6 +1193,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             IfStatement {
@@ -1238,6 +1258,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             IfStatement {
@@ -1307,6 +1328,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             WhileStatement {
@@ -1336,6 +1358,35 @@ mod test {
     }
 
     #[test]
+    fn test_do_statement_new() {
+        /*
+            do game.run();
+        */
+        let input = DoStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("game".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("run".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            DoStatement(SubroutineCall {
+                receiver: Some(Receiver::VarName(VarName(token::Identifier("game".to_string())))),
+                name: SubroutineName(token::Identifier("run".to_string())),
+                arguments: ExpressionList(vec![]),
+            }),
+            7,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
     fn test_statement_new() {
         // let foo = 1;
         let input = Statement::new(
@@ -1347,6 +1398,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             Some(Statement::Let(LetStatement {
@@ -1376,6 +1428,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             Some(Statement::If(IfStatement {
@@ -1411,6 +1464,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             Some(Statement::While(WhileStatement {
@@ -1428,7 +1482,30 @@ mod test {
             11,
         );
         assert_eq!(input, expected);
-        // TODO: do
+
+        // do game.run();
+        let input = Statement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("game".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("run".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Statement::Do(DoStatement(SubroutineCall {
+                receiver: Some(Receiver::VarName(VarName(token::Identifier("game".to_string())))),
+                name: SubroutineName(token::Identifier("run".to_string())),
+                arguments: ExpressionList(vec![]),
+            }))),
+            7,
+        );
+        assert_eq!(input, expected);
         // TODO: return
     }
 }
