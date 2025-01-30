@@ -369,7 +369,10 @@ impl Statement {
                 let (l, i) = DoStatement::new(tokens, index, class_name);
                 (Some(Self::Do(l)), i)
             }
-            // TODO: 随時ほかのvariantを実装する
+            Some(token::Token::Key(token::Keyword::Return)) => {
+                let (l, i) = ReturnStatement::new(tokens, index);
+                (Some(Self::Return(l)), i)
+            }
             _ => (None, index),
         }
     }
@@ -553,6 +556,21 @@ impl DoStatement {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ReturnStatement(Option<Expression>);
+impl ReturnStatement {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Return)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (expression, index) = Expression::new(tokens, index);
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::SemiColon)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (Self(expression), index)
+    }
+}
 
 /*
  * 式
@@ -752,6 +770,7 @@ fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
+    use std::slice::RSplit;
     use token::IntegerConstant;
 
     #[test]
@@ -1387,6 +1406,41 @@ mod test {
     }
 
     #[test]
+    fn test_return_statement_new() {
+        /*
+            return;
+        */
+        let input = ReturnStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (ReturnStatement(None), 2);
+        assert_eq!(input, expected);
+
+        /*
+            return true;
+        */
+        let input = ReturnStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (
+            ReturnStatement(Some(Expression {
+                term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+            })),
+            3,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
     fn test_statement_new() {
         // let foo = 1;
         let input = Statement::new(
@@ -1506,6 +1560,23 @@ mod test {
             7,
         );
         assert_eq!(input, expected);
-        // TODO: return
+
+        // return true;
+        let input = Statement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Statement::Return(ReturnStatement(Some(Expression {
+                term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+            })))),
+            3,
+        );
+        assert_eq!(input, expected);
     }
 }

@@ -32,14 +32,14 @@
     - [x] `LetStatement`
     - [x] `IfStatement`
     - [x] `WhileStatement`
-    - [ ] `DoStatement`
-    - [ ] `ReturnStatement`
-    - [ ] `Statement`
+    - [x] `DoStatement`
+    - [x] `ReturnStatement`
+    - [x] `Statement`
         - [x] `LetStatement`
         - [x] `IfStatement`
         - [x] `WhileStatement`
-        - [ ] `DoStatement`
-        - [ ] `ReturnStatement`
+        - [x] `DoStatement`
+        - [x] `ReturnStatement`
     - [x] `Statements`
     - [ ] `SubroutineBody`
     - [ ] `subroutineDec`
