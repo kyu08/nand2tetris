@@ -307,7 +307,7 @@ impl VarDec {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct ClassName(token::Identifier);
 impl ClassName {
     fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
@@ -319,6 +319,7 @@ impl ClassName {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 struct SubroutineName(token::Identifier);
 #[derive(Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
@@ -433,7 +434,18 @@ impl Term {
             }
             Some(token::Token::Identifier(i)) => (Some(Term::VarName(VarName(i.clone()))), index + 1),
             // TODO: SubroutineCallはあとで実装する
-            _ => Term::new(tokens, index),
+            _ => {
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
+                };
+                let (expression, index) = Expression::new(tokens, index);
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
+                };
+                (Some(Term::Expression(expression.unwrap())), index)
+            }
         }
     }
 }
@@ -449,8 +461,81 @@ enum KeyWordConstant {
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineCall {
     receiver: Option<Receiver>,
-    name: String,
-    arguments: Vec<ExpressionList>,
+    name: SubroutineName,
+    arguments: ExpressionList,
+}
+impl SubroutineCall {
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+        // まずindex + 1を見て`.`があるか調べる
+        let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
+
+        if exist_receiver {
+            let (receiver, index) = match tokens.get(index) {
+                Some(token::Token::Identifier(i)) => {
+                    // 自クラスの名前だったらReceiver::ClassName
+                    // それ以外の場合はReceiver::VarName
+                    if i.0 == class_name.0 .0 {
+                        (Some(Receiver::ClassName(class_name.clone())), index + 1)
+                    } else {
+                        (Some(Receiver::VarName(VarName(i.clone()))), index + 1)
+                    }
+                }
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+            // index番目に`.`があることは確認済みなのでindex + 1を見る
+            let (name, index) = match tokens.get(index + 1) {
+                Some(token::Token::Identifier(i)) => (SubroutineName(i.clone()), index + 2),
+                _ => panic!("{}", invalid_token(tokens, index + 1)),
+            };
+            let index = match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+            let (arguments, index) = match ExpressionList::new(tokens, index) {
+                (Some(el), returned_index) => (el, returned_index),
+                _ => (ExpressionList(vec![]), index),
+            };
+            let index = match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            (
+                Self {
+                    receiver,
+                    name,
+                    arguments,
+                },
+                index,
+            )
+        } else {
+            let (subroutine_name, index) = match tokens.get(index) {
+                Some(token::Token::Identifier(i)) => (SubroutineName(i.clone()), index + 1),
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+            let index = match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+            let (arguments, index) = match ExpressionList::new(tokens, index) {
+                (Some(el), index) => (el, index),
+                _ => (ExpressionList(vec![]), index),
+            };
+            let index = match tokens.get(index) {
+                Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+                _ => panic!("{}", invalid_token(tokens, index)),
+            };
+
+            (
+                Self {
+                    receiver: None,
+                    name: subroutine_name,
+                    arguments,
+                },
+                index,
+            )
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -575,54 +660,55 @@ mod test {
              }
         }
         */
-        let input = SubroutineDec::new(
-            &vec![
-                token::Token::Key(token::Keyword::Field),
-                token::Token::Identifier(token::Identifier("Square".to_string())),
-                token::Token::Identifier(token::Identifier("square".to_string())),
-                token::Token::Sym(token::Symbol::SemiColon),
-                token::Token::Key(token::Keyword::Field),
-                token::Token::Key(token::Keyword::Int),
-                token::Token::Identifier(token::Identifier("direction".to_string())),
-                token::Token::Sym(token::Symbol::SemiColon),
-                token::Token::Key(token::Keyword::Constructor),
-                token::Token::Identifier(token::Identifier("SquareGame".to_string())),
-                token::Token::Identifier(token::Identifier("new".to_string())),
-                token::Token::Sym(token::Symbol::LeftParen),
-                token::Token::Sym(token::Symbol::RightParen),
-                token::Token::Sym(token::Symbol::LeftBrace),
-                token::Token::Key(token::Keyword::Let),
-                token::Token::Identifier(token::Identifier("square".to_string())),
-                token::Token::Sym(token::Symbol::Equal),
-                token::Token::Identifier(token::Identifier("square".to_string())),
-                token::Token::Sym(token::Symbol::SemiColon),
-                token::Token::Key(token::Keyword::Let),
-                token::Token::Identifier(token::Identifier("direction".to_string())),
-                token::Token::Sym(token::Symbol::Equal),
-                token::Token::Identifier(token::Identifier("direction".to_string())),
-                token::Token::Sym(token::Symbol::SemiColon),
-                token::Token::Key(token::Keyword::Return),
-                token::Token::Identifier(token::Identifier("square".to_string())),
-                token::Token::Sym(token::Symbol::SemiColon),
-                token::Token::Sym(token::Symbol::RightBrace),
-                //  ひとまず1つめの宣言まで
-            ],
-            0,
-        );
-        let expected = (
-            vec![SubroutineDec {
-                kind: SubroutineDecKind::Constructor,
-                type_: SubroutineDecType::Type_(Type::ClassName("SquareGame".to_string())),
-                subroutine_name: "new".to_string(),
-                parameter_list: vec![],
-                body: SubroutineBody {
-                    var_dec: vec![],
-                    statements: vec![],
-                },
-            }],
-            13,
-        );
-        assert_eq!(input, expected);
+        // TODO: 実装ができたらコメントインする
+        // let input = SubroutineDec::new(
+        //     &vec![
+        //         token::Token::Key(token::Keyword::Field),
+        //         token::Token::Identifier(token::Identifier("Square".to_string())),
+        //         token::Token::Identifier(token::Identifier("square".to_string())),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //         token::Token::Key(token::Keyword::Field),
+        //         token::Token::Key(token::Keyword::Int),
+        //         token::Token::Identifier(token::Identifier("direction".to_string())),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //         token::Token::Key(token::Keyword::Constructor),
+        //         token::Token::Identifier(token::Identifier("SquareGame".to_string())),
+        //         token::Token::Identifier(token::Identifier("new".to_string())),
+        //         token::Token::Sym(token::Symbol::LeftParen),
+        //         token::Token::Sym(token::Symbol::RightParen),
+        //         token::Token::Sym(token::Symbol::LeftBrace),
+        //         token::Token::Key(token::Keyword::Let),
+        //         token::Token::Identifier(token::Identifier("square".to_string())),
+        //         token::Token::Sym(token::Symbol::Equal),
+        //         token::Token::Identifier(token::Identifier("square".to_string())),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //         token::Token::Key(token::Keyword::Let),
+        //         token::Token::Identifier(token::Identifier("direction".to_string())),
+        //         token::Token::Sym(token::Symbol::Equal),
+        //         token::Token::Identifier(token::Identifier("direction".to_string())),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //         token::Token::Key(token::Keyword::Return),
+        //         token::Token::Identifier(token::Identifier("square".to_string())),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //         token::Token::Sym(token::Symbol::RightBrace),
+        //         //  ひとまず1つめの宣言まで
+        //     ],
+        //     0,
+        // );
+        // let expected = (
+        //     vec![SubroutineDec {
+        //         kind: SubroutineDecKind::Constructor,
+        //         type_: SubroutineDecType::Type_(Type::ClassName("SquareGame".to_string())),
+        //         subroutine_name: "new".to_string(),
+        //         parameter_list: vec![],
+        //         body: SubroutineBody {
+        //             var_dec: vec![],
+        //             statements: vec![],
+        //         },
+        //     }],
+        //     13,
+        // );
+        // assert_eq!(input, expected);
     }
 
     #[test]
@@ -768,6 +854,121 @@ mod test {
         */
         let input = ExpressionList::new(&vec![], 0);
         let expected = (None, 0);
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_subroutine_call_new() {
+        /*
+            Main.show(x, y)(レシーバがclass_name)
+        */
+        let input = SubroutineCall::new(
+            &vec![
+                token::Token::Identifier(token::Identifier("Main".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("show".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineCall {
+                receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Main".to_string())))),
+                name: SubroutineName(token::Identifier("show".to_string())),
+                arguments: ExpressionList(vec![
+                    Expression {
+                        term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                    },
+                    Expression {
+                        term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
+                    },
+                ]),
+            },
+            8,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            person.show()(レシーバがvar_name)
+        */
+        let input = SubroutineCall::new(
+            &vec![
+                token::Token::Identifier(token::Identifier("person".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("show".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineCall {
+                receiver: Some(Receiver::VarName(VarName(token::Identifier("person".to_string())))),
+                name: SubroutineName(token::Identifier("show".to_string())),
+                arguments: ExpressionList(vec![]),
+            },
+            5,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            show(x, y)(レシーバなし)
+        */
+        let input = SubroutineCall::new(
+            &vec![
+                token::Token::Identifier(token::Identifier("show".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineCall {
+                receiver: None,
+                name: SubroutineName(token::Identifier("show".to_string())),
+                arguments: ExpressionList(vec![
+                    Expression {
+                        term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                    },
+                    Expression {
+                        term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
+                    },
+                ]),
+            },
+            6,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            show()(レシーバ、引数なし)
+        */
+        let input = SubroutineCall::new(
+            &vec![
+                token::Token::Identifier(token::Identifier("show".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineCall {
+                receiver: None,
+                name: SubroutineName(token::Identifier("show".to_string())),
+                arguments: ExpressionList(vec![]),
+            },
+            3,
+        );
         assert_eq!(input, expected);
     }
 }

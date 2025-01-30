@@ -25,10 +25,10 @@
     - [x] `test_data/Square/SquareGameT.xml`
     - [x] `test_data/Square/MainT.xml`
 - [ ] コンパイルエンジンを実装(式と配列以外)
-    - [ ] `ExpressionList`
-    - [ ] `SubroutineCall`
-    - [ ] `Term`
-    - [ ] `Expression`
+    - [x] `ExpressionList`
+    - [x] `SubroutineCall`
+    - [x] `Term`
+    - [x] `Expression`
     - [ ] `LetStatement`
     - [ ] `IfStatement`
     - [ ] `WhileStatement`
