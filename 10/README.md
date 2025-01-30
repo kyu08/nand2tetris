@@ -31,13 +31,13 @@
     - [x] `Expression`
     - [x] `LetStatement`
     - [x] `IfStatement`
-    - [ ] `WhileStatement`
+    - [x] `WhileStatement`
     - [ ] `DoStatement`
     - [ ] `ReturnStatement`
     - [ ] `Statement`
         - [x] `LetStatement`
         - [x] `IfStatement`
-        - [ ] `WhileStatement`
+        - [x] `WhileStatement`
         - [ ] `DoStatement`
         - [ ] `ReturnStatement`
     - [x] `Statements`

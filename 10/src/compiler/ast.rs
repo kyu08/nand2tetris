@@ -361,6 +361,10 @@ impl Statement {
                 let (l, i) = IfStatement::new(tokens, index);
                 (Some(Self::If(l)), i)
             }
+            Some(token::Token::Key(token::Keyword::While)) => {
+                let (l, i) = WhileStatement::new(tokens, index);
+                (Some(Self::While(l)), i)
+            }
             // TODO: 随時ほかのvariantを実装する
             _ => (None, index),
         }
@@ -491,6 +495,38 @@ impl IfStatement {
 struct WhileStatement {
     condition: Expression,
     body: Statements,
+}
+impl WhileStatement {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::While)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (condition, index) = match Expression::new(tokens, index) {
+            (Some(e), index) => (e, index),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (body, index) = Statements::new(tokens, index);
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (Self { condition, body }, index)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1247,6 +1283,59 @@ mod test {
     }
 
     #[test]
+    fn test_while_statement_new() {
+        /*
+            while (true) { let foo = 1; let bar = true; }
+        */
+        let input = WhileStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::While),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("bar".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+        );
+        let expected = (
+            WhileStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                body: Statements(vec![
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("foo".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        },
+                    }),
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("bar".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                        },
+                    }),
+                ]),
+            },
+            16,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
     fn test_statement_new() {
         // let foo = 1;
         let input = Statement::new(
@@ -1306,7 +1395,39 @@ mod test {
         );
         assert_eq!(input, expected);
 
-        // TODO: while
+        // while (true) { let foo = 1; }
+        let input = Statement::new(
+            &vec![
+                token::Token::Key(token::Keyword::While),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+        );
+        let expected = (
+            Some(Statement::While(WhileStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                body: Statements(vec![Statement::Let(LetStatement {
+                    var_name: VarName(token::Identifier("foo".to_string())),
+                    index: None,
+                    right_hand_side: Expression {
+                        term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                    },
+                })]),
+            })),
+            11,
+        );
+        assert_eq!(input, expected);
         // TODO: do
         // TODO: return
     }
