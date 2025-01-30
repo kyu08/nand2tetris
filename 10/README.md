@@ -30,11 +30,17 @@
     - [x] `Term`
     - [x] `Expression`
     - [x] `LetStatement`
-    - [ ] `IfStatement`
+    - [x] `IfStatement`
     - [ ] `WhileStatement`
     - [ ] `DoStatement`
     - [ ] `ReturnStatement`
     - [ ] `Statement`
+        - [x] `LetStatement`
+        - [x] `IfStatement`
+        - [ ] `WhileStatement`
+        - [ ] `DoStatement`
+        - [ ] `ReturnStatement`
+    - [x] `Statements`
     - [ ] `SubroutineBody`
     - [ ] `subroutineDec`
     - [ ] `class`

@@ -329,11 +329,18 @@ struct VarName(token::Identifier);
  */
 #[derive(Debug, PartialEq, Eq)]
 struct Statements(Vec<Statement>);
-// impl Statements {
-//     fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-//         (Statements(vec![]), index)
-//     }
-// }
+impl Statements {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let mut statements = vec![];
+        let mut index = index;
+        while let (Some(s), returned_index) = Statement::new(tokens, index) {
+            statements.push(s);
+            index = returned_index;
+        }
+
+        (Statements(statements), index)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum Statement {
@@ -344,9 +351,20 @@ enum Statement {
     Return(ReturnStatement),
 }
 impl Statement {
-    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-    //     (Statement::Let(()), index)
-    // }
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Let)) => {
+                let (l, i) = LetStatement::new(tokens, index);
+                (Some(Self::Let(l)), i)
+            }
+            Some(token::Token::Key(token::Keyword::If)) => {
+                let (l, i) = IfStatement::new(tokens, index);
+                (Some(Self::If(l)), i)
+            }
+            // TODO: 随時ほかのvariantを実装する
+            _ => (None, index),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -396,6 +414,77 @@ struct IfStatement {
     condition: Expression,
     positive_case_body: Statements,
     negative_case_body: Option<Statements>,
+}
+impl IfStatement {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::If)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (condition, index) = match Expression::new(tokens, index) {
+            (Some(e), index) => (e, index),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (positive_case_body, index) = Statements::new(tokens, index);
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        match tokens.get(index) {
+            // else節があるパターン
+            Some(token::Token::Key(token::Keyword::Else)) => {
+                let index = index + 1; // elseの分を前に進める
+
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
+                    _ => panic!("{}", invalid_token(tokens, index)),
+                };
+                let (negative_case_body, index) = {
+                    let (statements, index) = Statements::new(tokens, index);
+                    if statements.0.is_empty() {
+                        (None, index)
+                    } else {
+                        (Some(statements), index)
+                    }
+                };
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
+                    _ => panic!("{}", invalid_token(tokens, index)),
+                };
+                (
+                    Self {
+                        condition,
+                        positive_case_body,
+                        negative_case_body,
+                    },
+                    index,
+                )
+            }
+            // else節がないパターン
+            _ => (
+                Self {
+                    condition,
+                    positive_case_body,
+                    negative_case_body: None,
+                },
+                index,
+            ),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1022,5 +1111,203 @@ mod test {
             5,
         );
         assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_if_statement_new() {
+        /*
+            if (true) { let foo = 1; let bar = true; }
+        */
+        let input = IfStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::If),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("bar".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+        );
+        let expected = (
+            IfStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                positive_case_body: Statements(vec![
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("foo".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        },
+                    }),
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("bar".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                        },
+                    }),
+                ]),
+                negative_case_body: None,
+            },
+            16,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            if (true) { let foo = 1; let bar = true; } else { let baz = 1; let qux = null; }
+        */
+        let input = IfStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::If),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("bar".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+                token::Token::Key(token::Keyword::Else),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("baz".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("qux".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Key(token::Keyword::Null),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+        );
+        let expected = (
+            IfStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                positive_case_body: Statements(vec![
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("foo".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        },
+                    }),
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("bar".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                        },
+                    }),
+                ]),
+                negative_case_body: Some(Statements(vec![
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("baz".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        },
+                    }),
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("qux".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::KeyWordConstant(KeyWordConstant::Null)),
+                        },
+                    }),
+                ])),
+            },
+            29,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_statement_new() {
+        // let foo = 1;
+        let input = Statement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (
+            Some(Statement::Let(LetStatement {
+                var_name: VarName(token::Identifier("foo".to_string())),
+                index: None,
+                right_hand_side: Expression {
+                    term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                },
+            })),
+            5,
+        );
+        assert_eq!(input, expected);
+
+        // if (true) { let foo = 1; }
+        let input = Statement::new(
+            &vec![
+                token::Token::Key(token::Keyword::If),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+        );
+        let expected = (
+            Some(Statement::If(IfStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                positive_case_body: Statements(vec![Statement::Let(LetStatement {
+                    var_name: VarName(token::Identifier("foo".to_string())),
+                    index: None,
+                    right_hand_side: Expression {
+                        term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                    },
+                })]),
+                negative_case_body: None,
+            })),
+            11,
+        );
+        assert_eq!(input, expected);
+
+        // TODO: while
+        // TODO: do
+        // TODO: return
     }
 }
