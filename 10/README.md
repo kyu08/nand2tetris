@@ -29,7 +29,7 @@
     - [x] `SubroutineCall`
     - [x] `Term`
     - [x] `Expression`
-    - [ ] `LetStatement`
+    - [x] `LetStatement`
     - [ ] `IfStatement`
     - [ ] `WhileStatement`
     - [ ] `DoStatement`

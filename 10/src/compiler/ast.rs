@@ -352,20 +352,44 @@ impl Statement {
 #[derive(Debug, PartialEq, Eq)]
 struct LetStatement {
     var_name: VarName,
-    // index: Option<Expression>,
+    index: Option<Expression>,
     right_hand_side: Expression,
 }
-// impl LetStatement {
-//     fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-//         (
-//             Self {
-//                 var_name,
-//                 right_hand_side,
-//             },
-//             index,
-//         )
-//     }
-// }
+impl LetStatement {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Let)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (var_name, index) = match tokens.get(index) {
+            Some(token::Token::Identifier(i)) => (VarName(i.clone()), index + 1),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        // TODO: ('[]' expression ']')? のチェックを行う
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::Equal)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (right_hand_side, index) = match Expression::new(tokens, index) {
+            (Some(e), index) => (e, index),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::SemiColon)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (
+            Self {
+                var_name,
+                index: None,
+                right_hand_side,
+            },
+            index,
+        )
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 struct IfStatement {
@@ -968,6 +992,34 @@ mod test {
                 arguments: ExpressionList(vec![]),
             },
             3,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_let_statement_new() {
+        /*
+            let foo = 1;
+        */
+        let input = LetStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+        );
+        let expected = (
+            LetStatement {
+                var_name: VarName(token::Identifier("foo".to_string())),
+                index: None,
+                right_hand_side: Expression {
+                    term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                },
+            },
+            5,
         );
         assert_eq!(input, expected);
     }
