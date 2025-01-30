@@ -244,16 +244,31 @@ impl ParameterList {
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineBody {
     var_dec: Vec<VarDec>,
-    statements: Vec<Statement>,
+    statements: Statements,
 }
 impl SubroutineBody {
-    // fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-    //     // TODO: {があることを確認
-    //     // TODO: var_decをn個パース
-    //     // TODO: statementsをパース
-    //     // TODO: }があることを確認
-    //     (Self { var_dec, statements }, index)
-    // }
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        let mut var_dec = vec![];
+        let mut index = index;
+        while let (Some(got), returned_index) = VarDec::new(tokens, index) {
+            var_dec.push(got);
+            index = returned_index;
+        }
+
+        let (statements, index) = Statements::new(tokens, index, class_name);
+
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+
+        (Self { var_dec, statements }, index)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -262,12 +277,11 @@ struct VarDec {
     var_name: Vec<VarName>,
 }
 impl VarDec {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
-        let mut index = index;
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
         let mut var_name = vec![];
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Var)) => index + 1,
-            _ => panic!("{}", invalid_token(tokens, index)),
+            _ => return (None, index),
         };
 
         let (type_, index) = match Type::new(tokens, index) {
@@ -303,7 +317,7 @@ impl VarDec {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
-        (Self { type_, var_name }, index)
+        (Some(Self { type_, var_name }), index)
     }
 }
 
@@ -770,7 +784,6 @@ fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
 mod test {
     use super::*;
     use pretty_assertions::assert_eq;
-    use std::slice::RSplit;
     use token::IntegerConstant;
 
     #[test]
@@ -930,10 +943,10 @@ mod test {
             0,
         );
         let expected = (
-            VarDec {
+            Some(VarDec {
                 type_: Type::ClassName("MyType".to_string()),
                 var_name: vec![VarName(token::Identifier("foo".to_string()))],
-            },
+            }),
             4,
         );
         assert_eq!(input, expected);
@@ -953,14 +966,14 @@ mod test {
             0,
         );
         let expected = (
-            VarDec {
+            Some(VarDec {
                 type_: Type::Int,
                 var_name: vec![
                     VarName(token::Identifier("x".to_string())),
                     VarName(token::Identifier("y".to_string())),
                     VarName(token::Identifier("z".to_string())),
                 ],
-            },
+            }),
             8,
         );
         assert_eq!(input, expected);
@@ -1436,6 +1449,84 @@ mod test {
                 term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
             })),
             3,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_subroutine_body_new() {
+        /* var_decが複数 && statementが複数
+            {
+                var int x, y;
+                let foo = true;
+                return x;
+            }
+        */
+        let input = SubroutineBody::new(
+            &vec![
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Var),
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("foo".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineBody {
+                var_dec: vec![VarDec {
+                    type_: Type::Int,
+                    var_name: vec![
+                        VarName(token::Identifier("x".to_string())),
+                        VarName(token::Identifier("y".to_string())),
+                    ],
+                }],
+                statements: Statements(vec![
+                    Statement::Let(LetStatement {
+                        var_name: VarName(token::Identifier("foo".to_string())),
+                        index: None,
+                        right_hand_side: Expression {
+                            term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                        },
+                    }),
+                    Statement::Return(ReturnStatement(Some(Expression {
+                        term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                    }))),
+                ]),
+            },
+            16,
+        );
+        assert_eq!(input, expected);
+
+        /*  var_decもstatementsもなしのパターン
+            {}
+        */
+        let input = SubroutineBody::new(
+            &vec![
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            SubroutineBody {
+                var_dec: vec![],
+                statements: Statements(vec![]),
+            },
+            2,
         );
         assert_eq!(input, expected);
     }

@@ -41,9 +41,9 @@
         - [x] `DoStatement`
         - [x] `ReturnStatement`
     - [x] `Statements`
-    - [ ] `SubroutineBody`
-    - [ ] `subroutineDec`
-    - [ ] `class`
+    - [x] `SubroutineBody`
+    - [ ] `SubroutineDec`
+    - [ ] `Class`
 - [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ExpressionLessSquare/Main.xml`
     - [ ] `test_data/ExpressionLessSquare/SquareGame.xml`

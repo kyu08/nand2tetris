@@ -11,7 +11,7 @@ tool-test:
 	fi
 
 test: tool-test
-	RUST_BACKTRACE=full FZF_MAKE_IS_TESTING=true cargo nextest run
+	RUST_BACKTRACE=full cargo nextest run
 
 build:
 	@cargo build
