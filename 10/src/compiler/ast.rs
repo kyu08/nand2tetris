@@ -905,6 +905,7 @@ enum Term {
     StringConstant(token::StringConstant),
     KeyWordConstant(KeyWordConstant),
     VarName(VarName),
+    ArrayIndexAccess(VarName, Expression),
     Expression(Expression),
     SubroutineCall(SubroutineCall),
 }
@@ -925,7 +926,23 @@ impl Term {
             Some(token::Token::Key(token::Keyword::This)) => {
                 (Some(Term::KeyWordConstant(KeyWordConstant::This)), index + 1)
             }
-            Some(token::Token::Identifier(i)) => (Some(Term::VarName(VarName(i.clone()))), index + 1),
+            Some(token::Token::Identifier(i)) => {
+                match (tokens.get(index + 1), tokens.get(index + 3)) {
+                    // VarName[index]のパターン
+                    (
+                        Some(token::Token::Sym(token::Symbol::LeftBracket)),
+                        Some(token::Token::Sym(token::Symbol::RightBracket)),
+                    ) => match Expression::new(tokens, index, class_name) {
+                        (Some(ex), index) => (Some(Term::ArrayIndexAccess(VarName(i.clone()), ex)), index + 4),
+                        // たまたま Identifier, [, なにか, ]という並びになる可能性もある。なのでVarName[index]としてパースできなかったら
+                        // VarNameとして扱っておく
+                        _ => (Some(Term::VarName(VarName(i.clone()))), index + 1),
+                    },
+
+                    // VarNameのパターン
+                    _ => (Some(Term::VarName(VarName(i.clone()))), index + 1),
+                }
+            }
             Some(token::Token::Sym(token::Symbol::LeftParen)) => {
                 let index = match tokens.get(index) {
                     Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
@@ -938,6 +955,8 @@ impl Term {
                 };
                 (Some(Term::Expression(expression.unwrap())), index)
             }
+
+            // 単に1token読んだだけではわからないパターン
             _ => match SubroutineCall::new(tokens, index, class_name) {
                 (Some(s), index) => (Some(Term::SubroutineCall(s)), index + 1),
                 _ => (None, index),
@@ -954,6 +973,13 @@ impl Term {
             Term::StringConstant(s) => vec![s.to_string()],
             Term::KeyWordConstant(s) => vec![s.to_string()],
             Term::VarName(s) => vec![s.to_string()],
+            Term::ArrayIndexAccess(v, e) => {
+                let mut result = vec![v.to_string()];
+                result.push(to_xml_tag(token::Symbol::LeftBracket));
+                result = [result, e.to_string()].concat();
+                result.push(to_xml_tag(token::Symbol::RightBracket));
+                result
+            }
             Term::Expression(s) => s.to_string(),
             Term::SubroutineCall(s) => s.to_string(),
         };
