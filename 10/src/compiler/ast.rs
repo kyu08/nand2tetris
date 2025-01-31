@@ -186,7 +186,10 @@ impl ClassVarDec {
         result.push(open);
         result.push(self.kind.to_string());
         result.push(self.type_.to_string());
-        for n in &self.var_names {
+        for (index, n) in self.var_names.iter().enumerate() {
+            if index != 0 {
+                result.push(to_xml_tag(token::Symbol::Comma));
+            }
             result.push(n.to_string());
         }
         if !&self.var_names.is_empty() {
@@ -387,7 +390,10 @@ impl ParameterList {
         let mut result = vec![];
         let (open, close) = get_xml_tag("parameterList".to_string());
         result.push(open);
-        for p in &self.0 {
+        for (index, p) in self.0.iter().enumerate() {
+            if index != 0 {
+                result.push(to_xml_tag(token::Symbol::Comma));
+            }
             result.push(p.0.to_string());
             result.push(p.1.to_string());
         }
@@ -954,7 +960,7 @@ impl Term {
         let content = match self {
             Term::IntegerConstant(s) => vec![s.to_string()],
             Term::StringConstant(s) => vec![s.to_string()],
-            Term::KeyWordConstant(s) => vec![to_xml_tag(s)],
+            Term::KeyWordConstant(s) => vec![s.to_string()],
             Term::VarName(s) => vec![s.to_string()],
             Term::Expression(s) => s.to_string(),
             Term::SubroutineCall(s) => s.to_string(),
@@ -972,6 +978,20 @@ enum KeyWordConstant {
     False,
     Null,
     This,
+}
+impl KeyWordConstant {
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("keyword".to_string());
+        let content = match self {
+            KeyWordConstant::True => "true".to_string(),
+            KeyWordConstant::False => "false".to_string(),
+            KeyWordConstant::Null => "null".to_string(),
+            KeyWordConstant::This => "this".to_string(),
+        };
+
+        format!("{} {} {}", open, content, close)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -1063,10 +1083,11 @@ impl SubroutineCall {
 
         let (open, close) = get_xml_tag("expressionList".to_string());
         result.push(open);
-        if !&self.arguments.0.is_empty() {
-            for a in &self.arguments.0 {
-                result = [result, a.to_string()].concat();
+        for (index, a) in self.arguments.0.iter().enumerate() {
+            if index != 0 {
+                result.push(to_xml_tag(token::Symbol::Comma));
             }
+            result = [result, a.to_string()].concat();
         }
         result.push(close);
 
