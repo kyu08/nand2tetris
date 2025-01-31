@@ -43,7 +43,7 @@
     - [x] `Statements`
     - [x] `SubroutineBody`
     - [x] `SubroutineDec`
-    - [ ] `Class`
+    - [x] `Class`
 - [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ExpressionLessSquare/Main.xml`
     - [ ] `test_data/ExpressionLessSquare/SquareGame.xml`
