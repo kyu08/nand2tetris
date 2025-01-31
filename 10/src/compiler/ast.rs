@@ -596,7 +596,7 @@ impl Statement {
 #[derive(Debug, PartialEq, Eq)]
 struct LetStatement {
     var_name: VarName,
-    index: Option<Expression>,
+    array_index: Option<Expression>,
     right_hand_side: Expression,
 }
 impl LetStatement {
@@ -605,11 +605,24 @@ impl LetStatement {
             Some(token::Token::Key(token::Keyword::Let)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (var_name, index) = match tokens.get(index) {
+        let (var_name, mut index) = match tokens.get(index) {
             Some(token::Token::Identifier(i)) => (VarName(i.clone()), index + 1),
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        // TODO: ('[]' expression ']')? のチェックを行う
+
+        let mut array_index = None;
+        if let Some(token::Token::Sym(token::Symbol::LeftBracket)) = tokens.get(index) {
+            if let (Some(e), returned_index) = Expression::new(tokens, index, class_name) {
+                match tokens.get(returned_index) {
+                    Some(token::Token::Sym(token::Symbol::RightBracket)) => {
+                        array_index = Some(e);
+                        index = returned_index + 1;
+                    }
+                    _ => panic!("{}", invalid_token(tokens, returned_index)),
+                }
+            }
+        }
+
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::Equal)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -627,7 +640,7 @@ impl LetStatement {
         (
             Self {
                 var_name,
-                index: None,
+                array_index,
                 right_hand_side,
             },
             index,
@@ -904,7 +917,7 @@ impl Expression {
         let (open, close) = get_xml_tag("expression".to_string());
         result.push(open);
         result = [result, self.term.to_string()].concat();
-        for o in self.op_term {
+        for o in &self.op_term {
             result.push(o.0.to_string());
             result = [result, o.1.to_string()].concat();
         }
@@ -1396,7 +1409,7 @@ mod test {
                         statements: Statements(vec![
                             Statement::Let(LetStatement {
                                 var_name: VarName(token::Identifier("square".to_string())),
-                                index: None,
+                                array_index: None,
                                 right_hand_side: Expression {
                                     term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
                                     op_term: vec![],
@@ -1404,7 +1417,7 @@ mod test {
                             }),
                             Statement::Let(LetStatement {
                                 var_name: VarName(token::Identifier("direction".to_string())),
-                                index: None,
+                                array_index: None,
                                 right_hand_side: Expression {
                                     term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
                                     op_term: vec![],
@@ -1556,7 +1569,7 @@ mod test {
                     statements: Statements(vec![
                         Statement::Let(LetStatement {
                             var_name: VarName(token::Identifier("square".to_string())),
-                            index: None,
+                            array_index: None,
                             right_hand_side: Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
                                 op_term: vec![],
@@ -1564,7 +1577,7 @@ mod test {
                         }),
                         Statement::Let(LetStatement {
                             var_name: VarName(token::Identifier("direction".to_string())),
-                            index: None,
+                            array_index: None,
                             right_hand_side: Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
                                 op_term: vec![],
@@ -2022,7 +2035,7 @@ mod test {
         let expected = (
             LetStatement {
                 var_name: VarName(token::Identifier("foo".to_string())),
-                index: None,
+                array_index: None,
                 right_hand_side: Expression {
                     term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                     op_term: vec![],
@@ -2069,7 +2082,7 @@ mod test {
                 positive_case_body: Statements(vec![
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("foo".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                             op_term: vec![],
@@ -2077,7 +2090,7 @@ mod test {
                     }),
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("bar".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
                             op_term: vec![],
@@ -2137,7 +2150,7 @@ mod test {
                 positive_case_body: Statements(vec![
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("foo".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                             op_term: vec![],
@@ -2145,7 +2158,7 @@ mod test {
                     }),
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("bar".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
                             op_term: vec![],
@@ -2155,7 +2168,7 @@ mod test {
                 negative_case_body: Some(Statements(vec![
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("baz".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                             op_term: vec![],
@@ -2163,7 +2176,7 @@ mod test {
                     }),
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("qux".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::Null)),
                             op_term: vec![],
@@ -2243,7 +2256,7 @@ mod test {
                 body: Statements(vec![
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("foo".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                             op_term: vec![],
@@ -2251,7 +2264,7 @@ mod test {
                     }),
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("bar".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
                             op_term: vec![],
@@ -2374,7 +2387,7 @@ mod test {
                 statements: Statements(vec![
                     Statement::Let(LetStatement {
                         var_name: VarName(token::Identifier("foo".to_string())),
-                        index: None,
+                        array_index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
                             op_term: vec![],
@@ -2428,7 +2441,7 @@ mod test {
         let expected = (
             Some(Statement::Let(LetStatement {
                 var_name: VarName(token::Identifier("foo".to_string())),
-                index: None,
+                array_index: None,
                 right_hand_side: Expression {
                     term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                     op_term: vec![],
@@ -2464,7 +2477,7 @@ mod test {
                 },
                 positive_case_body: Statements(vec![Statement::Let(LetStatement {
                     var_name: VarName(token::Identifier("foo".to_string())),
-                    index: None,
+                    array_index: None,
                     right_hand_side: Expression {
                         term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                         op_term: vec![],
@@ -2502,7 +2515,7 @@ mod test {
                 },
                 body: Statements(vec![Statement::Let(LetStatement {
                     var_name: VarName(token::Identifier("foo".to_string())),
-                    index: None,
+                    array_index: None,
                     right_hand_side: Expression {
                         term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
                         op_term: vec![],
@@ -2563,7 +2576,7 @@ mod test {
             term
         */
         let input = Expression::new(
-            &vec![token::Token::IntegerConstant(token::IntegerConstant(1))],
+            &[token::Token::IntegerConstant(token::IntegerConstant(1))],
             0,
             &ClassName(token::Identifier("Main".to_string())),
         );

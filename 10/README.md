@@ -58,8 +58,8 @@
         - [x] `unaryOp term`
     - [x] `expression`
         - [x] `term (op term)*`
-    - [ ] `letStatement`
-        - [ ] `varName[expression]`
+    - [x] `letStatement`
+        - [x] `varName[expression]`
 - [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ArrayTest/Main.xml`
     - [ ] `test_data/Square/Main.xml`
