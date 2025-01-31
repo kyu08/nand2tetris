@@ -907,6 +907,7 @@ enum Term {
     VarName(VarName),
     ArrayIndexAccess(VarName, Expression),
     Expression(Expression),
+    UnaryOp(UnaryOp, Box<Term>),
     SubroutineCall(SubroutineCall),
 }
 impl Term {
@@ -957,10 +958,18 @@ impl Term {
             }
 
             // 単に1token読んだだけではわからないパターン
-            _ => match SubroutineCall::new(tokens, index, class_name) {
-                (Some(s), index) => (Some(Term::SubroutineCall(s)), index + 1),
-                _ => (None, index),
-            },
+            _ => {
+                if let (Some(u), index) = UnaryOp::new(tokens, index) {
+                    match Term::new(tokens, index, class_name) {
+                        (Some(t), index) => return (Some(Term::UnaryOp(u, Box::new(t))), index + 1),
+                        _ => panic!("{}", invalid_token(tokens, index)),
+                    }
+                };
+                match SubroutineCall::new(tokens, index, class_name) {
+                    (Some(s), index) => (Some(Term::SubroutineCall(s)), index + 1),
+                    _ => (None, index),
+                }
+            }
         }
     }
     fn to_string(&self) -> Vec<String> {
@@ -981,6 +990,11 @@ impl Term {
                 result
             }
             Term::Expression(s) => s.to_string(),
+            Term::UnaryOp(u, t) => {
+                let mut result = vec![u.to_string()];
+                result = [result, t.to_string()].concat();
+                result
+            }
             Term::SubroutineCall(s) => s.to_string(),
         };
         result = [result, content].concat();
@@ -1202,6 +1216,7 @@ impl Op {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum UnaryOp {
     Minus,
     Tilde,

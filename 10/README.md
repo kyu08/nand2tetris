@@ -52,10 +52,10 @@
 - [ ] コンパイルエンジンの残りの部分を実装(式と配列)
     - [x] `unaryOp`
     - [x] `op`
-    - [ ] `term`
+    - [x] `term`
         - [x] `SubroutineCall`
-        - [ ] `varName[expression]`
-        - [ ] `unaryOp term`
+        - [x] `varName[expression]`
+        - [x] `unaryOp term`
     - [ ] `expression`
         - [ ] `term (op term)*`
     - [ ] `letStatement`
