@@ -564,7 +564,7 @@ impl Statement {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Let)) => {
-                let (l, i) = LetStatement::new(tokens, index);
+                let (l, i) = LetStatement::new(tokens, index, class_name);
                 (Some(Self::Let(l)), i)
             }
             Some(token::Token::Key(token::Keyword::If)) => {
@@ -580,7 +580,7 @@ impl Statement {
                 (Some(Self::Do(l)), i)
             }
             Some(token::Token::Key(token::Keyword::Return)) => {
-                let (l, i) = ReturnStatement::new(tokens, index);
+                let (l, i) = ReturnStatement::new(tokens, index, class_name);
                 (Some(Self::Return(l)), i)
             }
             _ => (None, index),
@@ -604,7 +604,7 @@ struct LetStatement {
     right_hand_side: Expression,
 }
 impl LetStatement {
-    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Let)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -618,7 +618,7 @@ impl LetStatement {
             Some(token::Token::Sym(token::Symbol::Equal)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (right_hand_side, index) = match Expression::new(tokens, index) {
+        let (right_hand_side, index) = match Expression::new(tokens, index, class_name) {
             (Some(e), index) => (e, index),
             _ => panic!("{}", invalid_token(tokens, index)),
         };
@@ -666,7 +666,7 @@ impl IfStatement {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (condition, index) = match Expression::new(tokens, index) {
+        let (condition, index) = match Expression::new(tokens, index, class_name) {
             (Some(e), index) => (e, index),
             _ => panic!("{}", invalid_token(tokens, index)),
         };
@@ -773,7 +773,7 @@ impl WhileStatement {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (condition, index) = match Expression::new(tokens, index) {
+        let (condition, index) = match Expression::new(tokens, index, class_name) {
             (Some(e), index) => (e, index),
             _ => panic!("{}", invalid_token(tokens, index)),
         };
@@ -845,12 +845,12 @@ impl DoStatement {
 #[derive(Debug, PartialEq, Eq)]
 struct ReturnStatement(Option<Expression>);
 impl ReturnStatement {
-    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Return)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (expression, index) = Expression::new(tokens, index);
+        let (expression, index) = Expression::new(tokens, index, class_name);
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::SemiColon)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -882,8 +882,8 @@ struct Expression {
     // op_term: Vec<(Op, Term)>,
 }
 impl Expression {
-    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
-        match Term::new(tokens, index) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+        match Term::new(tokens, index, class_name) {
             (Some(t), i) => (Some(Self { term: Box::new(t) }), i),
             _ => (None, index),
         }
@@ -910,7 +910,7 @@ enum Term {
     // TODO: あとで拡張する
 }
 impl Term {
-    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::IntegerConstant(i)) => (Some(Term::IntegerConstant(i.clone())), index + 1),
             Some(token::Token::StringConstant(s)) => (Some(Term::StringConstant(s.clone())), index + 1),
@@ -927,13 +927,27 @@ impl Term {
                 (Some(Term::KeyWordConstant(KeyWordConstant::This)), index + 1)
             }
             Some(token::Token::Identifier(i)) => (Some(Term::VarName(VarName(i.clone()))), index + 1),
-            // TODO: SubroutineCallはあとで実装する
-            _ => {
+            Some(token::Token::Sym(token::Symbol::LeftParen)) => {
                 let index = match tokens.get(index) {
                     Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
                     _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
                 };
-                let (expression, index) = Expression::new(tokens, index);
+                let (expression, index) = Expression::new(tokens, index, class_name);
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
+                };
+                (Some(Term::Expression(expression.unwrap())), index)
+            }
+            _ => {
+                let (subroutine_call, index) = SubroutineCall::new(tokens, index, class_name);
+
+                // TODO: ここをsubroutineCallに変更する
+                let index = match tokens.get(index) {
+                    Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
+                };
+                let (expression, index) = Expression::new(tokens, index, class_name);
                 let index = match tokens.get(index) {
                     Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
                     _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
@@ -992,7 +1006,7 @@ struct SubroutineCall {
 }
 impl SubroutineCall {
     // NOTE: _class_nameは必要なくなったがあとで必要になるかもなのでいったん残しておく
-    fn new(tokens: &[token::Token], index: usize, _class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         // まずindex + 1を見て`.`があるか調べる
         let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
 
@@ -1017,7 +1031,7 @@ impl SubroutineCall {
                 Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
-            let (arguments, index) = match ExpressionList::new(tokens, index) {
+            let (arguments, index) = match ExpressionList::new(tokens, index, class_name) {
                 (Some(el), returned_index) => (el, returned_index),
                 _ => (ExpressionList(vec![]), index),
             };
@@ -1043,7 +1057,7 @@ impl SubroutineCall {
                 Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
-            let (arguments, index) = match ExpressionList::new(tokens, index) {
+            let (arguments, index) = match ExpressionList::new(tokens, index, class_name) {
                 (Some(el), index) => (el, index),
                 _ => (ExpressionList(vec![]), index),
             };
@@ -1107,8 +1121,8 @@ impl ExpressionList {
     // 無
     // expression
     // expression, expression, ..., expression
-    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
-        let (expression, index) = match Expression::new(tokens, index) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+        let (expression, index) = match Expression::new(tokens, index, class_name) {
             (Some(expression), returned_index) => (expression, returned_index),
             _ => return (None, index),
         };
@@ -1117,7 +1131,7 @@ impl ExpressionList {
         let mut expression_list = vec![expression];
         while let Some(token::Token::Sym(token::Symbol::Comma)) = tokens.get(index) {
             index += 1;
-            match Expression::new(tokens, index) {
+            match Expression::new(tokens, index, class_name) {
                 (Some(expression), returned_index) => {
                     index = returned_index;
                     expression_list.push(expression);
@@ -1773,6 +1787,7 @@ mod test {
                 token::Token::Key(token::Keyword::False),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             Some(ExpressionList(vec![
@@ -1790,7 +1805,11 @@ mod test {
         /*
             1
         */
-        let input = ExpressionList::new(&[token::Token::IntegerConstant(token::IntegerConstant(1))], 0);
+        let input = ExpressionList::new(
+            &[token::Token::IntegerConstant(token::IntegerConstant(1))],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
         let expected = (
             Some(ExpressionList(vec![Expression {
                 term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
@@ -1802,7 +1821,7 @@ mod test {
         /*
             (引数なし)
         */
-        let input = ExpressionList::new(&[], 0);
+        let input = ExpressionList::new(&[], 0, &ClassName(token::Identifier("Main".to_string())));
         let expected = (None, 0);
         assert_eq!(input, expected);
     }
@@ -1936,6 +1955,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             LetStatement {
@@ -2209,6 +2229,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (ReturnStatement(None), 2);
         assert_eq!(input, expected);
@@ -2223,6 +2244,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
             ReturnStatement(Some(Expression {
