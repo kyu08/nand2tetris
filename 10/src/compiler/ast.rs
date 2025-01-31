@@ -1,17 +1,5 @@
 use crate::analyzer::token;
 
-#[allow(dead_code)]
-struct CompilationEngine {
-    // Tokenizerからわたってきた字句解析の結果
-    token: Vec<token::Tokens>,
-}
-
-impl CompilationEngine {
-    fn new(token: Vec<token::Tokens>) -> Self {
-        Self { token }
-    }
-}
-
 pub struct Ast {
     class: Class,
 }
@@ -46,7 +34,7 @@ struct Class {
 }
 impl Class {
     // parse結果を返す。ひとまずindexは返さない
-    fn new(tokens: &Vec<token::Token>, index: usize) -> Option<Self> {
+    fn new(tokens: &[token::Token], index: usize) -> Option<Self> {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Class)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, 0)),
@@ -109,7 +97,7 @@ struct ClassVarDec {
 impl ClassVarDec {
     // parse結果と次のトークンの読み出し位置を返す
     // FIXME: SubroutineDec::newは単数を返すのにこっちはVecを返すのは一貫性がないので直してもいいかもしれない
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Vec<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Vec<Self>, usize) {
         let mut class_var_decs = vec![];
         let mut index = index;
         loop {
@@ -222,7 +210,7 @@ enum Type {
     ClassName(String),
 }
 impl Type {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Int)) => (Some(Type::Int), index + 1),
             Some(token::Token::Key(token::Keyword::Char)) => (Some(Type::Char), index + 1),
@@ -255,7 +243,7 @@ struct SubroutineDec {
     body: SubroutineBody,
 }
 impl SubroutineDec {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         let (kind, index) = match SubroutineDecKind::new(tokens, index) {
             (Some(k), i) => (k, i),
             _ => return (None, index),
@@ -310,7 +298,7 @@ enum SubroutineDecKind {
     Method,
 }
 impl SubroutineDecKind {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Constructor)) => (Some(SubroutineDecKind::Constructor), index + 1),
             Some(token::Token::Key(token::Keyword::Function)) => (Some(SubroutineDecKind::Function), index + 1),
@@ -331,7 +319,7 @@ enum SubroutineDecType {
     Type_(Type),
 }
 impl SubroutineDecType {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Void)) => (SubroutineDecType::Void, index + 1),
             _ => match Type::new(tokens, index) {
@@ -358,7 +346,7 @@ impl ParameterList {
     // パターンメモ
     // ``: 引数なし
     // `type var_name, type var_name, ..., type var_name`: n個の引数
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
         let mut index = index;
         let mut param_list = vec![];
         while let (Some(type_), returned_index) = Type::new(tokens, index) {
@@ -408,7 +396,7 @@ struct SubroutineBody {
     statements: Statements,
 }
 impl SubroutineBody {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -459,7 +447,7 @@ struct VarDec {
     var_name: Vec<VarName>,
 }
 impl VarDec {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         let mut var_name = vec![];
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Var)) => index + 1,
@@ -522,13 +510,14 @@ impl VarDec {
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct ClassName(token::Identifier);
 impl ClassName {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
         if let token::Token::Identifier(token::Identifier(s)) = tokens.get(index).unwrap() {
             (ClassName(token::Identifier(s.to_string())), index + 1)
         } else {
             panic!("{}", invalid_token(tokens, index))
         }
     }
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         self.0.to_string()
     }
@@ -539,6 +528,7 @@ struct SubroutineName(token::Identifier);
 #[derive(Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
 impl VarName {
+    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         self.0.to_string()
     }
@@ -550,7 +540,7 @@ impl VarName {
 #[derive(Debug, PartialEq, Eq)]
 struct Statements(Vec<Statement>);
 impl Statements {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let mut statements = vec![];
         let mut index = index;
         while let (Some(s), returned_index) = Statement::new(tokens, index, class_name) {
@@ -571,7 +561,7 @@ enum Statement {
     Return(ReturnStatement),
 }
 impl Statement {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Let)) => {
                 let (l, i) = LetStatement::new(tokens, index);
@@ -614,7 +604,7 @@ struct LetStatement {
     right_hand_side: Expression,
 }
 impl LetStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Let)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -667,7 +657,7 @@ struct IfStatement {
     negative_case_body: Option<Statements>,
 }
 impl IfStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::If)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -774,7 +764,7 @@ struct WhileStatement {
     body: Statements,
 }
 impl WhileStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::While)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -828,7 +818,7 @@ impl WhileStatement {
 #[derive(Debug, PartialEq, Eq)]
 struct DoStatement(SubroutineCall);
 impl DoStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Do)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -855,7 +845,7 @@ impl DoStatement {
 #[derive(Debug, PartialEq, Eq)]
 struct ReturnStatement(Option<Expression>);
 impl ReturnStatement {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Return)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -892,7 +882,7 @@ struct Expression {
     // op_term: Vec<(Op, Term)>,
 }
 impl Expression {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         match Term::new(tokens, index) {
             (Some(t), i) => (Some(Self { term: Box::new(t) }), i),
             _ => (None, index),
@@ -920,7 +910,7 @@ enum Term {
     // TODO: あとで拡張する
 }
 impl Term {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         match tokens.get(index) {
             Some(token::Token::IntegerConstant(i)) => (Some(Term::IntegerConstant(i.clone())), index + 1),
             Some(token::Token::StringConstant(s)) => (Some(Term::StringConstant(s.clone())), index + 1),
@@ -1002,7 +992,7 @@ struct SubroutineCall {
 }
 impl SubroutineCall {
     // NOTE: _class_nameは必要なくなったがあとで必要になるかもなのでいったん残しておく
-    fn new(tokens: &Vec<token::Token>, index: usize, _class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, _class_name: &ClassName) -> (Self, usize) {
         // まずindex + 1を見て`.`があるか調べる
         let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
 
@@ -1117,7 +1107,7 @@ impl ExpressionList {
     // 無
     // expression
     // expression, expression, ..., expression
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Option<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
         let (expression, index) = match Expression::new(tokens, index) {
             (Some(expression), returned_index) => (expression, returned_index),
             _ => return (None, index),
@@ -1141,9 +1131,21 @@ impl ExpressionList {
 }
 
 // TODO: Op
-// TODO: UnaryOp
+enum UnaryOp {
+    Minus,
+    Tilde,
+}
+impl UnaryOp {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::Minus)) => (Some(UnaryOp::Minus), index + 1),
+            Some(token::Token::Sym(token::Symbol::Tilde)) => (Some(UnaryOp::Tilde), index + 1),
+            _ => (None, index),
+        }
+    }
+}
 
-fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
+fn invalid_token(tokens: &[token::Token], index: usize) -> String {
     format!("invalid token {:?}[@{}]", tokens, index)
 }
 
@@ -1609,19 +1611,19 @@ mod test {
 
     #[test]
     fn test_type_new() {
-        let input = Type::new(&vec![token::Token::Key(token::Keyword::Int)], 0);
+        let input = Type::new(&[token::Token::Key(token::Keyword::Int)], 0);
         let expected = (Some(Type::Int), 1);
         assert_eq!(input, expected);
 
-        let input = Type::new(&vec![token::Token::Key(token::Keyword::Char)], 0);
+        let input = Type::new(&[token::Token::Key(token::Keyword::Char)], 0);
         let expected = (Some(Type::Char), 1);
         assert_eq!(input, expected);
 
-        let input = Type::new(&vec![token::Token::Key(token::Keyword::Boolean)], 0);
+        let input = Type::new(&[token::Token::Key(token::Keyword::Boolean)], 0);
         let expected = (Some(Type::Boolean), 1);
         assert_eq!(input, expected);
 
-        let input = Type::new(&vec![token::Token::Identifier(token::Identifier("main".to_string()))], 0);
+        let input = Type::new(&[token::Token::Identifier(token::Identifier("main".to_string()))], 0);
         let expected = (Some(Type::ClassName("main".to_string())), 1);
         assert_eq!(input, expected);
     }
@@ -1630,7 +1632,7 @@ mod test {
     fn test_var_dec_new() {
         // var MyType foo;
         let input = VarDec::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Var),
                 token::Token::Identifier(token::Identifier("MyType".to_string())),
                 token::Token::Identifier(token::Identifier("foo".to_string())),
@@ -1681,7 +1683,7 @@ mod test {
           int x, char y
         */
         let input = ParameterList::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Int),
                 token::Token::Identifier(token::Identifier("x".to_string())),
                 token::Token::Sym(token::Symbol::Comma),
@@ -1702,7 +1704,7 @@ mod test {
         /*
             (引数なし)
         */
-        let input = ParameterList::new(&vec![], 0);
+        let input = ParameterList::new(&[], 0);
         let expected = (ParameterList(vec![]), 0);
         assert_eq!(input, expected);
     }
@@ -1713,7 +1715,7 @@ mod test {
             true, false
         */
         let input = ExpressionList::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::True),
                 token::Token::Sym(token::Symbol::Comma),
                 token::Token::Key(token::Keyword::False),
@@ -1736,7 +1738,7 @@ mod test {
         /*
             1
         */
-        let input = ExpressionList::new(&vec![token::Token::IntegerConstant(token::IntegerConstant(1))], 0);
+        let input = ExpressionList::new(&[token::Token::IntegerConstant(token::IntegerConstant(1))], 0);
         let expected = (
             Some(ExpressionList(vec![Expression {
                 term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
@@ -1748,7 +1750,7 @@ mod test {
         /*
             (引数なし)
         */
-        let input = ExpressionList::new(&vec![], 0);
+        let input = ExpressionList::new(&[], 0);
         let expected = (None, 0);
         assert_eq!(input, expected);
     }
@@ -1793,7 +1795,7 @@ mod test {
             person.show()(レシーバがvar_name)
         */
         let input = SubroutineCall::new(
-            &vec![
+            &[
                 token::Token::Identifier(token::Identifier("person".to_string())),
                 token::Token::Sym(token::Symbol::Dot),
                 token::Token::Identifier(token::Identifier("show".to_string())),
@@ -1817,7 +1819,7 @@ mod test {
             show(x, y)(レシーバなし)
         */
         let input = SubroutineCall::new(
-            &vec![
+            &[
                 token::Token::Identifier(token::Identifier("show".to_string())),
                 token::Token::Sym(token::Symbol::LeftParen),
                 token::Token::Identifier(token::Identifier("x".to_string())),
@@ -1849,7 +1851,7 @@ mod test {
             show()(レシーバ、引数なし)
         */
         let input = SubroutineCall::new(
-            &vec![
+            &[
                 token::Token::Identifier(token::Identifier("show".to_string())),
                 token::Token::Sym(token::Symbol::LeftParen),
                 token::Token::Sym(token::Symbol::RightParen),
@@ -1874,7 +1876,7 @@ mod test {
             let foo = 1;
         */
         let input = LetStatement::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Let),
                 token::Token::Identifier(token::Identifier("foo".to_string())),
                 token::Token::Sym(token::Symbol::Equal),
@@ -2150,7 +2152,7 @@ mod test {
             return;
         */
         let input = ReturnStatement::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Return),
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
@@ -2163,7 +2165,7 @@ mod test {
             return true;
         */
         let input = ReturnStatement::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Return),
                 token::Token::Key(token::Keyword::True),
                 token::Token::Sym(token::Symbol::SemiColon),
@@ -2240,7 +2242,7 @@ mod test {
             {}
         */
         let input = SubroutineBody::new(
-            &vec![
+            &[
                 token::Token::Sym(token::Symbol::LeftBrace),
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
@@ -2261,7 +2263,7 @@ mod test {
     fn test_statement_new() {
         // let foo = 1;
         let input = Statement::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Let),
                 token::Token::Identifier(token::Identifier("foo".to_string())),
                 token::Token::Sym(token::Symbol::Equal),
@@ -2380,7 +2382,7 @@ mod test {
 
         // return true;
         let input = Statement::new(
-            &vec![
+            &[
                 token::Token::Key(token::Keyword::Return),
                 token::Token::Key(token::Keyword::True),
                 token::Token::Sym(token::Symbol::SemiColon),

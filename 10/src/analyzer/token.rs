@@ -164,6 +164,7 @@ pub enum Token {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct IntegerConstant(pub u32);
 impl IntegerConstant {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let (open, close) = get_xml_tag("integerConstant".to_string());
         format!("{} {} {}", open, self.0, close)
@@ -172,6 +173,7 @@ impl IntegerConstant {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StringConstant(pub String);
 impl StringConstant {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let (open, close) = get_xml_tag("stringConstant".to_string());
         format!("{} {} {}", open, self.0, close)
@@ -180,6 +182,7 @@ impl StringConstant {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier(pub String);
 impl Identifier {
+    #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         let tag_name = "identifier";
         format!("<{}> {} </{}>", tag_name, &self.0, tag_name)
