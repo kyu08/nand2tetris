@@ -1,6 +1,6 @@
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tokens {
-    tokens: Vec<Token>,
+    pub tokens: Vec<Token>,
     parsing_token: String,
     parsing_string_const: bool,
     current_comment_type: Option<CurrentCommentType>,
@@ -122,6 +122,7 @@ impl Tokens {
         self.parsing_string_const = !self.parsing_string_const;
     }
 
+    #[allow(dead_code)]
     pub fn to_xml(&self) -> String {
         let mut result = vec!["<tokens>".to_string()];
         for t in &self.tokens {
@@ -162,12 +163,31 @@ pub enum Token {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct IntegerConstant(pub u32);
+impl IntegerConstant {
+    pub fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("integerConstant".to_string());
+        format!("{} {} {}", open, self.0, close)
+    }
+}
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StringConstant(pub String);
+impl StringConstant {
+    pub fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("stringConstant".to_string());
+        format!("{} {} {}", open, self.0, close)
+    }
+}
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Identifier(pub String);
+impl Identifier {
+    pub fn to_string(&self) -> String {
+        let tag_name = "identifier";
+        format!("<{}> {} </{}>", tag_name, &self.0, tag_name)
+    }
+}
 
 impl Token {
+    #[allow(dead_code)]
     fn to_xml(&self) -> String {
         match self {
             Self::Key(v) => {
@@ -186,10 +206,7 @@ impl Token {
                 let tag_name = "stringConstant";
                 format!("<{}> {} </{}>", tag_name, v, tag_name)
             }
-            Self::Identifier(v) => {
-                let tag_name = "identifier";
-                format!("<{}> {} </{}>", tag_name, v.0, tag_name)
-            }
+            Self::Identifier(v) => v.to_string(),
         }
     }
 }
@@ -248,7 +265,7 @@ impl Keyword {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(PartialEq, Eq)]
 pub enum Symbol {
     /// {
     LeftBrace,
@@ -340,6 +357,17 @@ impl Symbol {
             Symbol::Tilde => "~".to_string(),
         }
     }
+}
+
+impl std::fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())?;
+        Ok(())
+    }
+}
+
+fn get_xml_tag(tag_name: String) -> (String, String) {
+    (format!("<{}>", tag_name), format!("</{}>", tag_name))
 }
 
 #[cfg(test)]

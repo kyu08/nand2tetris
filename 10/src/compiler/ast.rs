@@ -12,12 +12,12 @@ impl CompilationEngine {
     }
 }
 
-struct Ast {
+pub struct Ast {
     class: Class,
 }
 
 impl Ast {
-    fn new(tokens: Vec<token::Token>) -> Self {
+    pub fn new(tokens: Vec<token::Token>) -> Self {
         let class = match tokens.first() {
             Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0) {
                 Some(class) => class,
@@ -28,6 +28,10 @@ impl Ast {
         };
 
         Self { class }
+    }
+
+    pub fn to_xml(&self) -> String {
+        self.class.to_string().join("\n")
     }
 }
 
@@ -74,6 +78,25 @@ impl Class {
             var_dec,
             subroutine_dec,
         })
+    }
+
+    pub fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (class_open, class_close) = get_xml_tag("class".to_string());
+        result.push(class_open);
+        result.push(to_xml_tag(token::Keyword::Class));
+        result.push(self.name.0.to_string());
+        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        for var_dec in &self.var_dec {
+            result = [result, var_dec.to_string()].concat();
+        }
+        for subroutine in &self.subroutine_dec {
+            result = [result, subroutine.to_string()].concat();
+        }
+
+        result.push(to_xml_tag(token::Symbol::RightBrace));
+        result.push(class_close);
+        result
     }
 }
 
@@ -156,12 +179,36 @@ impl ClassVarDec {
         // ここから(可能な数だけSelfへのparseを試みる。失敗した位置が次の要素の場所なのでそのindexを返す(+1して返さないように注意))
         (class_var_decs, index)
     }
+
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("classVarDec".to_string());
+        result.push(open);
+        result.push(self.kind.to_string());
+        result.push(self.type_.to_string());
+        for n in &self.var_names {
+            result.push(n.to_string());
+        }
+        if !&self.var_names.is_empty() {
+            result.push(to_xml_tag(token::Symbol::SemiColon));
+        }
+
+        result.push(close);
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 enum ClassVarKind {
     Static,
     Field,
+}
+impl ClassVarKind {
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("keyword".to_string());
+        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -179,6 +226,19 @@ impl Type {
             Some(token::Token::Key(token::Keyword::Boolean)) => (Some(Type::Boolean), index + 1),
             Some(token::Token::Identifier(i)) => (Some(Type::ClassName(i.0.clone())), index + 1),
             _ => (None, index),
+        }
+    }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        match self {
+            Type::ClassName(c) => {
+                let (open, close) = get_xml_tag("identifier".to_string());
+                format!("{} {} {}", open, c, close)
+            }
+            _ => {
+                let (open, close) = get_xml_tag("keyword".to_string());
+                format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+            }
         }
     }
 }
@@ -224,6 +284,20 @@ impl SubroutineDec {
             index,
         )
     }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("subroutineDec".to_string());
+        result.push(open);
+        result.push(self.kind.to_string());
+        result.push(self.type_.to_string());
+        result.push(self.subroutine_name.to_string());
+        result.push(to_xml_tag(token::Symbol::LeftParen));
+        result = [result, self.parameter_list.to_string()].concat();
+        result.push(to_xml_tag(token::Symbol::RightParen));
+        result = [result, self.body.to_string()].concat();
+        result.push(close);
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -241,6 +315,11 @@ impl SubroutineDecKind {
             _ => (None, index),
         }
     }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("keyword".to_string());
+        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -257,6 +336,11 @@ impl SubroutineDecType {
                 _ => panic!("{}", invalid_token(tokens, index)),
             },
         }
+    }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let (open, close) = get_xml_tag("keyword".to_string());
+        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
 }
 
@@ -293,6 +377,18 @@ impl ParameterList {
 
         (Self(param_list), index)
     }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("parameterList".to_string());
+        result.push(open);
+        for p in &self.0 {
+            result.push(p.0.to_string());
+            result.push(p.1.to_string());
+        }
+        result.push(close);
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -322,6 +418,27 @@ impl SubroutineBody {
         };
 
         (Self { var_dec, statements }, index)
+    }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("subroutineBody".to_string());
+        result.push(open);
+        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        for v in &self.var_dec {
+            result = [result, v.to_string()].concat();
+        }
+        if !&self.statements.0.is_empty() {
+            let (open, close) = get_xml_tag("statements".to_string());
+            result.push(open);
+            for s in &self.statements.0 {
+                result = [result, s.to_string()].concat();
+            }
+            result.push(close);
+        }
+        result.push(to_xml_tag(token::Symbol::RightBrace));
+        result.push(close);
+        result
     }
 }
 
@@ -373,6 +490,22 @@ impl VarDec {
 
         (Some(Self { type_, var_name }), index)
     }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("varDec".to_string());
+        result.push(open);
+        result.push(to_xml_tag(token::Keyword::Var));
+        result.push(self.type_.to_string());
+        for n in &self.var_name {
+            result.push(n.to_string());
+        }
+        if !&self.var_name.is_empty() {
+            result.push(to_xml_tag(token::Symbol::SemiColon));
+        }
+
+        result.push(close);
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -385,12 +518,20 @@ impl ClassName {
             panic!("{}", invalid_token(tokens, index))
         }
     }
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineName(token::Identifier);
 #[derive(Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
+impl VarName {
+    fn to_string(&self) -> String {
+        self.0.to_string()
+    }
+}
 
 /*
  * 文
@@ -444,6 +585,15 @@ impl Statement {
             _ => (None, index),
         }
     }
+    fn to_string(&self) -> Vec<String> {
+        match self {
+            Statement::Let(s) => s.to_string(),
+            Statement::If(s) => s.to_string(),
+            Statement::While(s) => s.to_string(),
+            Statement::Do(s) => s.to_string(),
+            Statement::Return(s) => s.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -485,6 +635,17 @@ impl LetStatement {
             },
             index,
         )
+    }
+    fn to_string(&self) -> Vec<String> {
+        let (open, close) = get_xml_tag("letStatement".to_string());
+        let mut result = vec![open];
+        result.push(to_xml_tag(token::Keyword::Let));
+        result.push(self.var_name.to_string());
+        result.push(to_xml_tag(token::Symbol::Equal));
+        result = [result, self.right_hand_side.to_string()].concat();
+        result.push(to_xml_tag(token::Symbol::SemiColon));
+        result.push(close);
+        result
     }
 }
 
@@ -532,14 +693,7 @@ impl IfStatement {
                     Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
                     _ => panic!("{}", invalid_token(tokens, index)),
                 };
-                let (negative_case_body, index) = {
-                    let (statements, index) = Statements::new(tokens, index, class_name);
-                    if statements.0.is_empty() {
-                        (None, index)
-                    } else {
-                        (Some(statements), index)
-                    }
-                };
+                let (negative_case_body, index) = Statements::new(tokens, index, class_name);
                 let index = match tokens.get(index) {
                     Some(token::Token::Sym(token::Symbol::RightBrace)) => index + 1,
                     _ => panic!("{}", invalid_token(tokens, index)),
@@ -548,7 +702,7 @@ impl IfStatement {
                     Self {
                         condition,
                         positive_case_body,
-                        negative_case_body,
+                        negative_case_body: Some(negative_case_body),
                     },
                     index,
                 )
@@ -563,6 +717,43 @@ impl IfStatement {
                 index,
             ),
         }
+    }
+    fn to_string(&self) -> Vec<String> {
+        let (open, close) = get_xml_tag("ifStatement".to_string());
+        let mut result = vec![open];
+        result.push(to_xml_tag(token::Keyword::If));
+        result.push(to_xml_tag(token::Symbol::LeftParen));
+        result = [result, self.condition.to_string()].concat();
+        result.push(to_xml_tag(token::Symbol::RightParen));
+        result.push(to_xml_tag(token::Symbol::LeftBrace));
+
+        let (statement_open, statement_close) = get_xml_tag("statements".to_string());
+        result.push(statement_open);
+        for p in &self.positive_case_body.0 {
+            result = [result, p.to_string()].concat();
+        }
+        result.push(statement_close);
+        result.push(to_xml_tag(token::Symbol::RightBrace));
+
+        // panic!("{:?}", self);
+
+        match &self.negative_case_body {
+            Some(n_) => {
+                result.push(to_xml_tag(token::Keyword::Else));
+                result.push(to_xml_tag(token::Symbol::LeftBrace));
+                let (statement_open, statement_close) = get_xml_tag("statements".to_string());
+                result.push(statement_open);
+                for n in &n_.0 {
+                    result = [result, n.to_string()].concat();
+                }
+                result.push(statement_close);
+                result.push(to_xml_tag(token::Symbol::RightBrace));
+            }
+            None => {}
+        }
+
+        result.push(close);
+        result
     }
 }
 
@@ -602,6 +793,19 @@ impl WhileStatement {
 
         (Self { condition, body }, index)
     }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![to_xml_tag(token::Keyword::While)];
+        result.push(to_xml_tag(token::Symbol::LeftParen));
+        result = [result, self.condition.to_string()].concat();
+        result.push(to_xml_tag(token::Symbol::RightParen));
+        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        for p in &self.body.0 {
+            result = [result, p.to_string()].concat();
+        }
+        result.push(to_xml_tag(token::Symbol::RightBrace));
+
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -619,6 +823,15 @@ impl DoStatement {
         };
 
         (Self(subroutine_call), index)
+    }
+    fn to_string(&self) -> Vec<String> {
+        let (open, close) = get_xml_tag("doStatement".to_string());
+        let mut result = vec![open];
+        result.push(to_xml_tag(token::Keyword::Do));
+        result = [result, self.0.to_string()].concat();
+        result.push(to_xml_tag(token::Symbol::SemiColon));
+        result.push(close);
+        result
     }
 }
 
@@ -638,6 +851,17 @@ impl ReturnStatement {
 
         (Self(expression), index)
     }
+    fn to_string(&self) -> Vec<String> {
+        let (open, close) = get_xml_tag("returnStatement".to_string());
+        let mut result = vec![open];
+        result.push(to_xml_tag(token::Keyword::Return));
+        if let Some(e) = &self.0 {
+            result = [result, e.to_string()].concat()
+        }
+        result.push(to_xml_tag(token::Symbol::SemiColon));
+        result.push(close);
+        result
+    }
 }
 
 /*
@@ -656,6 +880,15 @@ impl Expression {
             (Some(t), i) => (Some(Self { term: Box::new(t) }), i),
             _ => (None, index),
         }
+    }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("expression".to_string());
+        result.push(open);
+        result = [result, self.term.to_string()].concat();
+
+        result.push(close);
+        result
     }
 }
 
@@ -701,6 +934,24 @@ impl Term {
                 (Some(Term::Expression(expression.unwrap())), index)
             }
         }
+    }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        let (open, close) = get_xml_tag("term".to_string());
+        result.push(open);
+
+        let content = match self {
+            Term::IntegerConstant(s) => vec![s.to_string()],
+            Term::StringConstant(s) => vec![s.to_string()],
+            Term::KeyWordConstant(s) => vec![to_xml_tag(s)],
+            Term::VarName(s) => vec![s.to_string()],
+            Term::Expression(s) => s.to_string(),
+            Term::SubroutineCall(s) => s.to_string(),
+        };
+        result = [result, content].concat();
+
+        result.push(close);
+        result
     }
 }
 
@@ -790,12 +1041,42 @@ impl SubroutineCall {
             )
         }
     }
+    fn to_string(&self) -> Vec<String> {
+        let mut result = vec![];
+        if let Some(r) = &self.receiver {
+            result.push(r.to_string());
+            result.push(to_xml_tag(token::Symbol::Dot));
+        }
+        result.push(self.name.0.to_string());
+        result.push(to_xml_tag(token::Symbol::LeftParen));
+
+        let (open, close) = get_xml_tag("expressionList".to_string());
+        result.push(open);
+        if !&self.arguments.0.is_empty() {
+            for a in &self.arguments.0 {
+                result = [result, a.to_string()].concat();
+            }
+        }
+        result.push(close);
+
+        result.push(to_xml_tag(token::Symbol::RightParen));
+        result
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
 enum Receiver {
     ClassName(ClassName),
     VarName(VarName),
+}
+impl Receiver {
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        match self {
+            Receiver::ClassName(c) => c.0.to_string(),
+            Receiver::VarName(v) => v.0.to_string(),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -832,6 +1113,27 @@ impl ExpressionList {
 
 fn invalid_token(tokens: &Vec<token::Token>, index: usize) -> String {
     format!("invalid token {:?}[@{}]", tokens, index)
+}
+
+fn get_xml_tag(tag_name: String) -> (String, String) {
+    (format!("<{}>", tag_name), format!("</{}>", tag_name))
+}
+fn to_xml_tag<T: std::fmt::Debug>(value: T) -> String {
+    let type_name_slice = std::any::type_name_of_val(&value).split("::").collect::<Vec<&str>>();
+    let tag_name = to_lowercase_at_1(type_name_slice[type_name_slice.len() - 1]);
+    format!("<{}> {} </{}>", &tag_name, format!("{:?}", value).to_lowercase(), &tag_name)
+}
+
+fn to_lowercase_at_1(s: &str) -> String {
+    let mut result = String::with_capacity(s.len());
+    for (i, c) in s.chars().enumerate() {
+        if i == 0 {
+            result.extend(c.to_lowercase());
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -1693,6 +1995,36 @@ mod test {
                 ])),
             },
             29,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            if (true) {} else {}
+        */
+        let input = IfStatement::new(
+            &vec![
+                token::Token::Key(token::Keyword::If),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::True),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Sym(token::Symbol::RightBrace),
+                token::Token::Key(token::Keyword::Else),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            IfStatement {
+                condition: Expression {
+                    term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                },
+                positive_case_body: Statements(vec![]),
+                negative_case_body: Some(Statements(vec![])),
+            },
+            9,
         );
         assert_eq!(input, expected);
     }

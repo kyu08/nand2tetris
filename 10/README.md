@@ -24,7 +24,7 @@
         ```
     - [x] `test_data/Square/SquareGameT.xml`
     - [x] `test_data/Square/MainT.xml`
-- [ ] コンパイルエンジンを実装(式と配列以外)
+- [x] コンパイルエンジンを実装(式と配列以外)
     - [x] `ExpressionList`
     - [x] `SubroutineCall`
     - [x] `Term`
@@ -44,8 +44,9 @@
     - [x] `SubroutineBody`
     - [x] `SubroutineDec`
     - [x] `Class`
+- [x] 上記をxml化する実装を追加
 - [ ] 以下のテストをパスすることを確認
-    - [ ] `test_data/ExpressionLessSquare/Main.xml`
+    - [x] `test_data/ExpressionLessSquare/Main.xml`
     - [ ] `test_data/ExpressionLessSquare/SquareGame.xml`
     - [ ] `test_data/ExpressionLessSquare/Square.xml`
 - [ ] コンパイルエンジンの残りの部分を実装(式と配列)
