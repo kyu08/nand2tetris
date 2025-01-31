@@ -42,7 +42,7 @@
         - [x] `ReturnStatement`
     - [x] `Statements`
     - [x] `SubroutineBody`
-    - [ ] `SubroutineDec`
+    - [x] `SubroutineDec`
     - [ ] `Class`
 - [ ] 以下のテストをパスすることを確認
     - [ ] `test_data/ExpressionLessSquare/Main.xml`

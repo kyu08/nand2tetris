@@ -53,7 +53,7 @@ impl Class {
         };
 
         let (var_dec, index) = ClassVarDec::new(tokens, index);
-        let (subroutine_dec, index) = SubroutineDec::new(tokens, index);
+        let (subroutine_dec, index) = SubroutineDec::new(tokens, index, &name);
 
         // 最後にセミコロンがあることをチェック
         match tokens.get(index) {
@@ -178,18 +178,39 @@ impl Type {
 struct SubroutineDec {
     kind: SubroutineDecKind,
     type_: SubroutineDecType,
-    subroutine_name: String,
-    parameter_list: Vec<ParameterList>,
+    subroutine_name: token::Identifier,
+    parameter_list: ParameterList,
     body: SubroutineBody,
 }
 impl SubroutineDec {
-    fn new(tokens: &Vec<token::Token>, index: usize) -> (Vec<Self>, usize) {
-        // TODO: kindの判定
-        // TODO: typeの判定
-        // TODO: nameを取り出す
-        // TODO: parameterList(引数リスト)のパース
-        // TODO: subroutineBodyのパース
-        (vec![], 0)
+    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+        let (kind, index) = SubroutineDecKind::new(tokens, index);
+        let (type_, index) = SubroutineDecType::new(tokens, index);
+        let (subroutine_name, index) = match tokens.get(index) {
+            Some(token::Token::Identifier(i)) => (i.clone(), index + 1),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (parameter_list, index) = ParameterList::new(tokens, index);
+        let index = match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
+            _ => panic!("{}", invalid_token(tokens, index)),
+        };
+        let (body, index) = SubroutineBody::new(tokens, index, class_name);
+
+        (
+            Self {
+                kind,
+                type_,
+                subroutine_name,
+                parameter_list,
+                body,
+            },
+            index,
+        )
     }
 }
 
@@ -199,11 +220,32 @@ enum SubroutineDecKind {
     Function,
     Method,
 }
+impl SubroutineDecKind {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Constructor)) => (SubroutineDecKind::Constructor, index + 1),
+            Some(token::Token::Key(token::Keyword::Function)) => (SubroutineDecKind::Function, index + 1),
+            Some(token::Token::Key(token::Keyword::Method)) => (SubroutineDecKind::Method, index + 1),
+            _ => panic!("{}", invalid_token(tokens, index)),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 enum SubroutineDecType {
     Void,
     Type_(Type),
+}
+impl SubroutineDecType {
+    fn new(tokens: &Vec<token::Token>, index: usize) -> (Self, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Key(token::Keyword::Void)) => (SubroutineDecType::Void, index + 1),
+            _ => match Type::new(tokens, index) {
+                (Some(t), index) => (SubroutineDecType::Type_(t), index),
+                _ => panic!("{}", invalid_token(tokens, index)),
+            },
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -665,17 +707,17 @@ struct SubroutineCall {
     arguments: ExpressionList,
 }
 impl SubroutineCall {
-    fn new(tokens: &Vec<token::Token>, index: usize, class_name: &ClassName) -> (Self, usize) {
+    // NOTE: _class_nameは必要なくなったがあとで必要になるかもなのでいったん残しておく
+    fn new(tokens: &Vec<token::Token>, index: usize, _class_name: &ClassName) -> (Self, usize) {
         // まずindex + 1を見て`.`があるか調べる
         let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
 
         if exist_receiver {
             let (receiver, index) = match tokens.get(index) {
                 Some(token::Token::Identifier(i)) => {
-                    // 自クラスの名前だったらReceiver::ClassName
-                    // それ以外の場合はReceiver::VarName
-                    if i.0 == class_name.0 .0 {
-                        (Some(Receiver::ClassName(class_name.clone())), index + 1)
+                    // 1文字目が大文字ならclass_nameだと判定する
+                    if i.0.chars().next().map_or(false, char::is_uppercase) {
+                        (Some(Receiver::ClassName(ClassName(i.clone()))), index + 1)
                     } else {
                         (Some(Receiver::VarName(VarName(i.clone()))), index + 1)
                     }
@@ -786,6 +828,69 @@ mod test {
     use pretty_assertions::assert_eq;
     use token::IntegerConstant;
 
+    // TODO: Class::newの実装のときに使えそうなのでおいておく
+    /*
+    class SquareGame {
+        field Square square;
+        field int direction;
+        constructor SquareGame new() {
+            let square = square;
+            let direction = direction;
+            return square;
+         }
+
+         method void dispose() {
+            do square.dispose();
+            do Memory.deAlloc(square);
+            return;
+         }
+
+         method void moveSquare() {
+            if (direction) { do square.moveUp(); }
+            if (direction) { do square.moveDown(); }
+            if (direction) { do square.moveLeft(); }
+            if (direction) { do square.moveRight(); }
+            do Sys.wait(direction);
+            return;
+         }
+    }
+    */
+    // TODO: 実装ができたらコメントインする
+    // let input = SubroutineDec::new(
+    //     &vec![
+    //         token::Token::Key(token::Keyword::Field),
+    //         token::Token::Identifier(token::Identifier("Square".to_string())),
+    //         token::Token::Identifier(token::Identifier("square".to_string())),
+    //         token::Token::Sym(token::Symbol::SemiColon),
+    //         token::Token::Key(token::Keyword::Field),
+    //         token::Token::Key(token::Keyword::Int),
+    //         token::Token::Identifier(token::Identifier("direction".to_string())),
+    //         token::Token::Sym(token::Symbol::SemiColon),
+    //         token::Token::Key(token::Keyword::Constructor),
+    //         token::Token::Identifier(token::Identifier("SquareGame".to_string())),
+    //         token::Token::Identifier(token::Identifier("new".to_string())),
+    //         token::Token::Sym(token::Symbol::LeftParen),
+    //         token::Token::Sym(token::Symbol::RightParen),
+    //         token::Token::Sym(token::Symbol::LeftBrace),
+    //         token::Token::Key(token::Keyword::Let),
+    //         token::Token::Identifier(token::Identifier("square".to_string())),
+    //         token::Token::Sym(token::Symbol::Equal),
+    //         token::Token::Identifier(token::Identifier("square".to_string())),
+    //         token::Token::Sym(token::Symbol::SemiColon),
+    //         token::Token::Key(token::Keyword::Let),
+    //         token::Token::Identifier(token::Identifier("direction".to_string())),
+    //         token::Token::Sym(token::Symbol::Equal),
+    //         token::Token::Identifier(token::Identifier("direction".to_string())),
+    //         token::Token::Sym(token::Symbol::SemiColon),
+    //         token::Token::Key(token::Keyword::Return),
+    //         token::Token::Identifier(token::Identifier("square".to_string())),
+    //         token::Token::Sym(token::Symbol::SemiColon),
+    //         token::Token::Sym(token::Symbol::RightBrace),
+    //         //  ひとまず1つめの宣言まで
+    //     ],
+    //     0,
+    //     &ClassName(token::Identifier("Main".to_string())),
+    // );
     #[test]
     fn test_class_var_dec_new() {
         /*
@@ -835,80 +940,232 @@ mod test {
     #[test]
     fn test_subroutine_dec_new() {
         /*
-        class SquareGame {
-            field Square square;
-            field int direction;
-            constructor SquareGame new() {
+            constructor SquareGame new(int x, int y) {
+                var boolean b;
+
                 let square = square;
                 let direction = direction;
                 return square;
-             }
+            }
+        */
+        let input = SubroutineDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Constructor),
+                token::Token::Identifier(token::Identifier("SquareGame".to_string())),
+                token::Token::Identifier(token::Identifier("new".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("x".to_string())),
+                token::Token::Sym(token::Symbol::Comma),
+                token::Token::Key(token::Keyword::Int),
+                token::Token::Identifier(token::Identifier("y".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Var),
+                token::Token::Key(token::Keyword::Boolean),
+                token::Token::Identifier(token::Identifier("b".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("direction".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("direction".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("SquareGame".to_string())),
+        );
+        let expected = (
+            SubroutineDec {
+                kind: SubroutineDecKind::Constructor,
+                type_: SubroutineDecType::Type_(Type::ClassName("SquareGame".to_string())),
+                subroutine_name: token::Identifier("new".to_string()),
+                parameter_list: ParameterList(vec![
+                    (Type::Int, VarName(token::Identifier("x".to_string()))),
+                    (Type::Int, VarName(token::Identifier("y".to_string()))),
+                ]),
+                body: SubroutineBody {
+                    var_dec: vec![VarDec {
+                        type_: Type::Boolean,
+                        var_name: vec![VarName(token::Identifier("b".to_string()))],
+                    }],
+                    statements: Statements(vec![
+                        Statement::Let(LetStatement {
+                            var_name: VarName(token::Identifier("square".to_string())),
+                            index: None,
+                            right_hand_side: Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                            },
+                        }),
+                        Statement::Let(LetStatement {
+                            var_name: VarName(token::Identifier("direction".to_string())),
+                            index: None,
+                            right_hand_side: Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                            },
+                        }),
+                        Statement::Return(ReturnStatement(Some(Expression {
+                            term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                        }))),
+                    ]),
+                },
+            },
+            29,
+        );
+        assert_eq!(input, expected);
 
-             method void dispose() {
+        /*
+             function void dispose() {
                 do square.dispose();
                 do Memory.deAlloc(square);
                 return;
              }
+        */
+        let input = SubroutineDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Function),
+                token::Token::Key(token::Keyword::Void),
+                token::Token::Identifier(token::Identifier("dispose".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("dispose".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("Memory".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("deAlloc".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("SquareGame".to_string())),
+        );
+        let expected = (
+            SubroutineDec {
+                kind: SubroutineDecKind::Function,
+                type_: SubroutineDecType::Void,
+                subroutine_name: token::Identifier("dispose".to_string()),
+                parameter_list: ParameterList(vec![]),
+                body: SubroutineBody {
+                    var_dec: vec![],
+                    statements: Statements(vec![
+                        Statement::Do(DoStatement(SubroutineCall {
+                            receiver: Some(Receiver::VarName(VarName(token::Identifier("square".to_string())))),
+                            name: SubroutineName(token::Identifier("dispose".to_string())),
+                            arguments: ExpressionList(vec![]),
+                        })),
+                        Statement::Do(DoStatement(SubroutineCall {
+                            receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Memory".to_string())))),
+                            name: SubroutineName(token::Identifier("deAlloc".to_string())),
+                            arguments: ExpressionList(vec![Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                            }]),
+                        })),
+                        Statement::Return(ReturnStatement(None)),
+                    ]),
+                },
+            },
+            24,
+        );
+        assert_eq!(input, expected);
 
+        /*
              method void moveSquare() {
                 if (direction) { do square.moveUp(); }
-                if (direction) { do square.moveDown(); }
-                if (direction) { do square.moveLeft(); }
-                if (direction) { do square.moveRight(); }
                 do Sys.wait(direction);
                 return;
              }
         }
         */
-        // TODO: 実装ができたらコメントインする
-        // let input = SubroutineDec::new(
-        //     &vec![
-        //         token::Token::Key(token::Keyword::Field),
-        //         token::Token::Identifier(token::Identifier("Square".to_string())),
-        //         token::Token::Identifier(token::Identifier("square".to_string())),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //         token::Token::Key(token::Keyword::Field),
-        //         token::Token::Key(token::Keyword::Int),
-        //         token::Token::Identifier(token::Identifier("direction".to_string())),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //         token::Token::Key(token::Keyword::Constructor),
-        //         token::Token::Identifier(token::Identifier("SquareGame".to_string())),
-        //         token::Token::Identifier(token::Identifier("new".to_string())),
-        //         token::Token::Sym(token::Symbol::LeftParen),
-        //         token::Token::Sym(token::Symbol::RightParen),
-        //         token::Token::Sym(token::Symbol::LeftBrace),
-        //         token::Token::Key(token::Keyword::Let),
-        //         token::Token::Identifier(token::Identifier("square".to_string())),
-        //         token::Token::Sym(token::Symbol::Equal),
-        //         token::Token::Identifier(token::Identifier("square".to_string())),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //         token::Token::Key(token::Keyword::Let),
-        //         token::Token::Identifier(token::Identifier("direction".to_string())),
-        //         token::Token::Sym(token::Symbol::Equal),
-        //         token::Token::Identifier(token::Identifier("direction".to_string())),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //         token::Token::Key(token::Keyword::Return),
-        //         token::Token::Identifier(token::Identifier("square".to_string())),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //         token::Token::Sym(token::Symbol::RightBrace),
-        //         //  ひとまず1つめの宣言まで
-        //     ],
-        //     0,
-        // );
-        // let expected = (
-        //     vec![SubroutineDec {
-        //         kind: SubroutineDecKind::Constructor,
-        //         type_: SubroutineDecType::Type_(Type::ClassName("SquareGame".to_string())),
-        //         subroutine_name: "new".to_string(),
-        //         parameter_list: vec![],
-        //         body: SubroutineBody {
-        //             var_dec: vec![],
-        //             statements: vec![],
-        //         },
-        //     }],
-        //     13,
-        // );
-        // assert_eq!(input, expected);
+        let input = SubroutineDec::new(
+            &vec![
+                token::Token::Key(token::Keyword::Method),
+                token::Token::Key(token::Keyword::Void),
+                token::Token::Identifier(token::Identifier("moveSquare".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::If),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Identifier(token::Identifier("direction".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::LeftBrace),
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("square".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("moveUp".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+                token::Token::Key(token::Keyword::Do),
+                token::Token::Identifier(token::Identifier("Sys".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("wait".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Identifier(token::Identifier("direction".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Key(token::Keyword::Return),
+                token::Token::Sym(token::Symbol::SemiColon),
+                token::Token::Sym(token::Symbol::RightBrace),
+            ],
+            0,
+            &ClassName(token::Identifier("SquareGame".to_string())),
+        );
+        let expected = (
+            SubroutineDec {
+                kind: SubroutineDecKind::Method,
+                type_: SubroutineDecType::Void,
+                subroutine_name: token::Identifier("moveSquare".to_string()),
+                parameter_list: ParameterList(vec![]),
+                body: SubroutineBody {
+                    var_dec: vec![],
+                    statements: Statements(vec![
+                        Statement::If(IfStatement {
+                            condition: Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                            },
+                            positive_case_body: Statements(vec![Statement::Do(DoStatement(SubroutineCall {
+                                receiver: Some(Receiver::VarName(VarName(token::Identifier("square".to_string())))),
+                                name: SubroutineName(token::Identifier("moveUp".to_string())),
+                                arguments: ExpressionList(vec![]),
+                            }))]),
+                            negative_case_body: None,
+                        }),
+                        Statement::Do(DoStatement(SubroutineCall {
+                            receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Sys".to_string())))),
+                            name: SubroutineName(token::Identifier("wait".to_string())),
+                            arguments: ExpressionList(vec![Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                            }]),
+                        })),
+                        Statement::Return(ReturnStatement(None)),
+                    ]),
+                },
+            },
+            30,
+        );
+        assert_eq!(input, expected);
     }
 
     #[test]
