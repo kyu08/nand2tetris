@@ -56,8 +56,8 @@
         - [x] `SubroutineCall`
         - [x] `varName[expression]`
         - [x] `unaryOp term`
-    - [ ] `expression`
-        - [ ] `term (op term)*`
+    - [x] `expression`
+        - [x] `term (op term)*`
     - [ ] `letStatement`
         - [ ] `varName[expression]`
 - [ ] 以下のテストをパスすることを確認

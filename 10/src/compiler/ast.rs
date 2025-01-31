@@ -517,10 +517,6 @@ impl ClassName {
             panic!("{}", invalid_token(tokens, index))
         }
     }
-    #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        self.0.to_string()
-    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -878,21 +874,40 @@ impl ReturnStatement {
 struct Expression {
     // 循環参照になってしまうのでBoxでくるんでいる
     term: Box<Term>,
-    // TODO: あとでコメントインする
-    // op_term: Vec<(Op, Term)>,
+    op_term: Vec<(Op, Term)>,
 }
 impl Expression {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
-        match Term::new(tokens, index, class_name) {
-            (Some(t), i) => (Some(Self { term: Box::new(t) }), i),
-            _ => (None, index),
+        let (term, mut index) = match Term::new(tokens, index, class_name) {
+            (Some(t), i) => (t, i),
+            _ => return (None, index),
+        };
+
+        let mut op_term = vec![];
+        while let (Some(o), op_index) = Op::new(tokens, index) {
+            if let (Some(t), term_index) = Term::new(tokens, op_index, class_name) {
+                index = term_index;
+                op_term.push((o, t));
+            }
         }
+
+        (
+            Some(Expression {
+                term: Box::new(term),
+                op_term,
+            }),
+            index,
+        )
     }
     fn to_string(&self) -> Vec<String> {
         let mut result = vec![];
         let (open, close) = get_xml_tag("expression".to_string());
         result.push(open);
         result = [result, self.term.to_string()].concat();
+        for o in self.op_term {
+            result.push(o.0.to_string());
+            result = [result, o.1.to_string()].concat();
+        }
 
         result.push(close);
         result
@@ -1172,6 +1187,7 @@ impl ExpressionList {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum Op {
     Plus,
     Minus,
@@ -1383,6 +1399,7 @@ mod test {
                                 index: None,
                                 right_hand_side: Expression {
                                     term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                                    op_term: vec![],
                                 },
                             }),
                             Statement::Let(LetStatement {
@@ -1390,10 +1407,12 @@ mod test {
                                 index: None,
                                 right_hand_side: Expression {
                                     term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                                    op_term: vec![],
                                 },
                             }),
                             Statement::Return(ReturnStatement(Some(Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                                op_term: vec![],
                             }))),
                         ]),
                     },
@@ -1416,6 +1435,7 @@ mod test {
                                 name: SubroutineName(token::Identifier("deAlloc".to_string())),
                                 arguments: ExpressionList(vec![Expression {
                                     term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                                    op_term: vec![],
                                 }]),
                             })),
                             Statement::Return(ReturnStatement(None)),
@@ -1539,6 +1559,7 @@ mod test {
                             index: None,
                             right_hand_side: Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                                op_term: vec![],
                             },
                         }),
                         Statement::Let(LetStatement {
@@ -1546,10 +1567,12 @@ mod test {
                             index: None,
                             right_hand_side: Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                                op_term: vec![],
                             },
                         }),
                         Statement::Return(ReturnStatement(Some(Expression {
                             term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                            op_term: vec![],
                         }))),
                     ]),
                 },
@@ -1614,6 +1637,7 @@ mod test {
                             name: SubroutineName(token::Identifier("deAlloc".to_string())),
                             arguments: ExpressionList(vec![Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("square".to_string())))),
+                                op_term: vec![],
                             }]),
                         })),
                         Statement::Return(ReturnStatement(None)),
@@ -1680,6 +1704,7 @@ mod test {
                         Statement::If(IfStatement {
                             condition: Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                                op_term: vec![],
                             },
                             positive_case_body: Statements(vec![Statement::Do(DoStatement(SubroutineCall {
                                 receiver: Some(Receiver::VarName(VarName(token::Identifier("square".to_string())))),
@@ -1693,6 +1718,7 @@ mod test {
                             name: SubroutineName(token::Identifier("wait".to_string())),
                             arguments: ExpressionList(vec![Expression {
                                 term: Box::new(Term::VarName(VarName(token::Identifier("direction".to_string())))),
+                                op_term: vec![],
                             }]),
                         })),
                         Statement::Return(ReturnStatement(None)),
@@ -1822,9 +1848,11 @@ mod test {
             Some(ExpressionList(vec![
                 Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::False)),
+                    op_term: vec![],
                 },
             ])),
             3,
@@ -1842,6 +1870,7 @@ mod test {
         let expected = (
             Some(ExpressionList(vec![Expression {
                 term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                op_term: vec![],
             }])),
             1,
         );
@@ -1881,9 +1910,11 @@ mod test {
                 arguments: ExpressionList(vec![
                     Expression {
                         term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                        op_term: vec![],
                     },
                     Expression {
                         term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
+                        op_term: vec![],
                     },
                 ]),
             }),
@@ -1937,9 +1968,11 @@ mod test {
                 arguments: ExpressionList(vec![
                     Expression {
                         term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                        op_term: vec![],
                     },
                     Expression {
                         term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
+                        op_term: vec![],
                     },
                 ]),
             }),
@@ -1992,6 +2025,7 @@ mod test {
                 index: None,
                 right_hand_side: Expression {
                     term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                    op_term: vec![],
                 },
             },
             5,
@@ -2030,6 +2064,7 @@ mod test {
             IfStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 positive_case_body: Statements(vec![
                     Statement::Let(LetStatement {
@@ -2037,6 +2072,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                            op_term: vec![],
                         },
                     }),
                     Statement::Let(LetStatement {
@@ -2044,6 +2080,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                            op_term: vec![],
                         },
                     }),
                 ]),
@@ -2095,6 +2132,7 @@ mod test {
             IfStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 positive_case_body: Statements(vec![
                     Statement::Let(LetStatement {
@@ -2102,6 +2140,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                            op_term: vec![],
                         },
                     }),
                     Statement::Let(LetStatement {
@@ -2109,6 +2148,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                            op_term: vec![],
                         },
                     }),
                 ]),
@@ -2118,6 +2158,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                            op_term: vec![],
                         },
                     }),
                     Statement::Let(LetStatement {
@@ -2125,6 +2166,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::Null)),
+                            op_term: vec![],
                         },
                     }),
                 ])),
@@ -2155,6 +2197,7 @@ mod test {
             IfStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 positive_case_body: Statements(vec![]),
                 negative_case_body: Some(Statements(vec![])),
@@ -2195,6 +2238,7 @@ mod test {
             WhileStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 body: Statements(vec![
                     Statement::Let(LetStatement {
@@ -2202,6 +2246,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                            op_term: vec![],
                         },
                     }),
                     Statement::Let(LetStatement {
@@ -2209,6 +2254,7 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                            op_term: vec![],
                         },
                     }),
                 ]),
@@ -2278,6 +2324,7 @@ mod test {
         let expected = (
             ReturnStatement(Some(Expression {
                 term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                op_term: vec![],
             })),
             3,
         );
@@ -2330,10 +2377,12 @@ mod test {
                         index: None,
                         right_hand_side: Expression {
                             term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                            op_term: vec![],
                         },
                     }),
                     Statement::Return(ReturnStatement(Some(Expression {
                         term: Box::new(Term::VarName(VarName(token::Identifier("x".to_string())))),
+                        op_term: vec![],
                     }))),
                 ]),
             },
@@ -2382,6 +2431,7 @@ mod test {
                 index: None,
                 right_hand_side: Expression {
                     term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                    op_term: vec![],
                 },
             })),
             5,
@@ -2410,12 +2460,14 @@ mod test {
             Some(Statement::If(IfStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 positive_case_body: Statements(vec![Statement::Let(LetStatement {
                     var_name: VarName(token::Identifier("foo".to_string())),
                     index: None,
                     right_hand_side: Expression {
                         term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        op_term: vec![],
                     },
                 })]),
                 negative_case_body: None,
@@ -2446,12 +2498,14 @@ mod test {
             Some(Statement::While(WhileStatement {
                 condition: Expression {
                     term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                    op_term: vec![],
                 },
                 body: Statements(vec![Statement::Let(LetStatement {
                     var_name: VarName(token::Identifier("foo".to_string())),
                     index: None,
                     right_hand_side: Expression {
                         term: Box::new(Term::IntegerConstant(IntegerConstant(1))),
+                        op_term: vec![],
                     },
                 })]),
             })),
@@ -2496,8 +2550,76 @@ mod test {
         let expected = (
             Some(Statement::Return(ReturnStatement(Some(Expression {
                 term: Box::new(Term::KeyWordConstant(KeyWordConstant::True)),
+                op_term: vec![],
             })))),
             3,
+        );
+        assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_expression_new() {
+        /*
+            term
+        */
+        let input = Expression::new(
+            &vec![token::Token::IntegerConstant(token::IntegerConstant(1))],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Expression {
+                term: Box::new(Term::IntegerConstant(token::IntegerConstant(1))),
+                op_term: vec![],
+            }),
+            1,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            term op term
+        */
+        let input = Expression::new(
+            &[
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::Plus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Expression {
+                term: Box::new(Term::IntegerConstant(token::IntegerConstant(1))),
+                op_term: vec![(Op::Plus, Term::IntegerConstant(token::IntegerConstant(1)))],
+            }),
+            3,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            term op term op term
+        */
+        let input = Expression::new(
+            &[
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::Plus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::Minus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Expression {
+                term: Box::new(Term::IntegerConstant(token::IntegerConstant(1))),
+                op_term: vec![
+                    (Op::Plus, Term::IntegerConstant(token::IntegerConstant(1))),
+                    (Op::Minus, Term::IntegerConstant(token::IntegerConstant(1))),
+                ],
+            }),
+            5,
         );
         assert_eq!(input, expected);
     }
