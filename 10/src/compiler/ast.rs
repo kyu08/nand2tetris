@@ -339,8 +339,13 @@ impl SubroutineDecType {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
-        let (open, close) = get_xml_tag("keyword".to_string());
-        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+        match self {
+            SubroutineDecType::Void => {
+                let (open, close) = get_xml_tag("keyword".to_string());
+                format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+            }
+            SubroutineDecType::Type_(t) => t.to_string(),
+        }
     }
 }
 
@@ -794,16 +799,22 @@ impl WhileStatement {
         (Self { condition, body }, index)
     }
     fn to_string(&self) -> Vec<String> {
-        let mut result = vec![to_xml_tag(token::Keyword::While)];
+        let (open, close) = get_xml_tag("whileStatement".to_string());
+        let mut result = vec![open];
+        result.push(to_xml_tag(token::Keyword::While));
         result.push(to_xml_tag(token::Symbol::LeftParen));
         result = [result, self.condition.to_string()].concat();
         result.push(to_xml_tag(token::Symbol::RightParen));
         result.push(to_xml_tag(token::Symbol::LeftBrace));
+
+        let (statement_open, statement_close) = get_xml_tag("statements".to_string());
+        result.push(statement_open);
         for p in &self.body.0 {
             result = [result, p.to_string()].concat();
         }
+        result.push(statement_close);
         result.push(to_xml_tag(token::Symbol::RightBrace));
-
+        result.push(close);
         result
     }
 }

@@ -47,7 +47,7 @@
 - [x] 上記をxml化する実装を追加
 - [ ] 以下のテストをパスすることを確認
     - [x] `test_data/ExpressionLessSquare/Main.xml`
-    - [ ] `test_data/ExpressionLessSquare/SquareGame.xml`
+    - [x] `test_data/ExpressionLessSquare/SquareGame.xml`
     - [ ] `test_data/ExpressionLessSquare/Square.xml`
 - [ ] コンパイルエンジンの残りの部分を実装(式と配列)
 - [ ] 以下のテストをパスすることを確認
