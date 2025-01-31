@@ -1130,7 +1130,50 @@ impl ExpressionList {
     }
 }
 
-// TODO: Op
+enum Op {
+    Plus,
+    Minus,
+    Asterisk,
+    Slash,
+    Ampersand,
+    Pipe,
+    LessThan,
+    MoreThan,
+    Equal,
+}
+impl Op {
+    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
+        match tokens.get(index) {
+            Some(token::Token::Sym(token::Symbol::Plus)) => (Some(Op::Plus), index + 1),
+            Some(token::Token::Sym(token::Symbol::Minus)) => (Some(Op::Minus), index + 1),
+            Some(token::Token::Sym(token::Symbol::Asterisk)) => (Some(Op::Asterisk), index + 1),
+            Some(token::Token::Sym(token::Symbol::Slash)) => (Some(Op::Slash), index + 1),
+            Some(token::Token::Sym(token::Symbol::Ampersand)) => (Some(Op::Ampersand), index + 1),
+            Some(token::Token::Sym(token::Symbol::Pipe)) => (Some(Op::Pipe), index + 1),
+            Some(token::Token::Sym(token::Symbol::LessThan)) => (Some(Op::LessThan), index + 1),
+            Some(token::Token::Sym(token::Symbol::MoreThan)) => (Some(Op::MoreThan), index + 1),
+            Some(token::Token::Sym(token::Symbol::Equal)) => (Some(Op::Equal), index + 1),
+            _ => (None, index),
+        }
+    }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let content = match self {
+            Op::Plus => "+".to_string(),
+            Op::Minus => "-".to_string(),
+            Op::Asterisk => "*".to_string(),
+            Op::Slash => "/".to_string(),
+            Op::Ampersand => "&".to_string(),
+            Op::Pipe => "|".to_string(),
+            Op::LessThan => "<".to_string(),
+            Op::MoreThan => ">".to_string(),
+            Op::Equal => "=".to_string(),
+        };
+        let (open, close) = get_xml_tag("symbol".to_string());
+        format!("{} {} {}", open, content, close)
+    }
+}
+
 enum UnaryOp {
     Minus,
     Tilde,
