@@ -612,7 +612,10 @@ impl LetStatement {
 
         let mut array_index = None;
         if let Some(token::Token::Sym(token::Symbol::LeftBracket)) = tokens.get(index) {
-            if let (Some(e), returned_index) = Expression::new(tokens, index, class_name) {
+            // let sum = sum + a[i]; のパースでstack over flowになることがわかった。
+            // ここをindex +1 にするとfatal runtime error: stack overflowになる、、、
+            // stack over flowを起こしているデータフローを確認する
+            if let (Some(e), returned_index) = Expression::new(tokens, index + 1, class_name) {
                 match tokens.get(returned_index) {
                     Some(token::Token::Sym(token::Symbol::RightBracket)) => {
                         array_index = Some(e);
@@ -890,6 +893,11 @@ struct Expression {
     op_term: Vec<(Op, Term)>,
 }
 impl Expression {
+    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
+    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
+    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
+    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
+    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         let (term, mut index) = match Term::new(tokens, index, class_name) {
             (Some(t), i) => (t, i),
@@ -940,6 +948,10 @@ enum Term {
 }
 impl Term {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+        // これが誤って呼ばれている。
+        if let (Some(s), index) = SubroutineCall::new(tokens, index, class_name) {
+            return (Some(Term::SubroutineCall(s)), index);
+        }
         match tokens.get(index) {
             Some(token::Token::IntegerConstant(i)) => (Some(Term::IntegerConstant(i.clone())), index + 1),
             Some(token::Token::StringConstant(s)) => (Some(Term::StringConstant(s.clone())), index + 1),
@@ -993,10 +1005,7 @@ impl Term {
                         _ => panic!("{}", invalid_token(tokens, index)),
                     }
                 };
-                match SubroutineCall::new(tokens, index, class_name) {
-                    (Some(s), index) => (Some(Term::SubroutineCall(s)), index + 1),
-                    _ => (None, index),
-                }
+                (None, index)
             }
         }
     }
@@ -1063,7 +1072,6 @@ struct SubroutineCall {
 impl SubroutineCall {
     // NOTE: _class_nameは必要なくなったがあとで必要になるかもなのでいったん残しておく
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
-        // まずindex + 1を見て`.`があるか調べる
         let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
 
         if exist_receiver {
@@ -1111,7 +1119,7 @@ impl SubroutineCall {
             };
             let index = match tokens.get(index) {
                 Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
-                _ => panic!("{}", invalid_token(tokens, index)),
+                _ => return (None, index),
             };
             let (arguments, index) = match ExpressionList::new(tokens, index, class_name) {
                 (Some(el), index) => (el, index),
@@ -1119,7 +1127,7 @@ impl SubroutineCall {
             };
             let index = match tokens.get(index) {
                 Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
-                _ => panic!("{}", invalid_token(tokens, index)),
+                _ => return (None, index),
             };
 
             (
@@ -2042,6 +2050,177 @@ mod test {
                 },
             },
             5,
+        );
+        assert_eq!(input, expected);
+
+        // let length = Keyboard.readInt("HOW MANY NUMBERS? ");
+        let input = LetStatement::new(
+            &[
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("length".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("Keyboard".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("readInt".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::StringConstant(token::StringConstant("HOW MANY NUMBERS? ".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            LetStatement {
+                var_name: VarName(token::Identifier("length".to_string())),
+                array_index: None,
+                right_hand_side: Expression {
+                    term: Box::new(Term::SubroutineCall(SubroutineCall {
+                        receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
+                        name: SubroutineName(token::Identifier("readInt".to_string())),
+                        arguments: ExpressionList(vec![Expression {
+                            term: Box::new(Term::StringConstant(token::StringConstant(
+                                "HOW MANY NUMBERS? ".to_string(),
+                            ))),
+                            op_term: vec![],
+                        }]),
+                    })),
+                    op_term: vec![],
+                },
+            },
+            10,
+        );
+        assert_eq!(input, expected);
+
+        // let a[i] = Keyboard.readInt("HOW MANY NUMBERS? ");
+        let input = LetStatement::new(
+            &[
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("a".to_string())),
+                token::Token::Sym(token::Symbol::LeftBracket),
+                token::Token::Identifier(token::Identifier("i".to_string())),
+                token::Token::Sym(token::Symbol::RightBracket),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("Keyboard".to_string())),
+                token::Token::Sym(token::Symbol::Dot),
+                token::Token::Identifier(token::Identifier("readInt".to_string())),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::StringConstant(token::StringConstant("HOW MANY NUMBERS? ".to_string())),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            LetStatement {
+                var_name: VarName(token::Identifier("a".to_string())),
+                array_index: Some(Expression {
+                    term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
+                    op_term: vec![],
+                }),
+                right_hand_side: Expression {
+                    term: Box::new(Term::SubroutineCall(SubroutineCall {
+                        receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
+                        name: SubroutineName(token::Identifier("readInt".to_string())),
+                        arguments: ExpressionList(vec![Expression {
+                            term: Box::new(Term::StringConstant(token::StringConstant(
+                                "HOW MANY NUMBERS? ".to_string(),
+                            ))),
+                            op_term: vec![],
+                        }]),
+                    })),
+                    op_term: vec![],
+                },
+            },
+            13,
+        );
+        assert_eq!(input, expected);
+
+        // // let sum = sum + a[i];
+        // let input = LetStatement::new(
+        //     &[
+        //         token::Token::Key(token::Keyword::Let),
+        //         token::Token::Identifier(token::Identifier("sum".to_string())),
+        //         token::Token::Sym(token::Symbol::Equal),
+        //         token::Token::Identifier(token::Identifier("sum".to_string())),
+        //         token::Token::Sym(token::Symbol::Plus),
+        //         token::Token::Identifier(token::Identifier("a".to_string())),
+        //         token::Token::Sym(token::Symbol::LeftBracket),
+        //         token::Token::Identifier(token::Identifier("i".to_string())),
+        //         token::Token::Sym(token::Symbol::RightBracket),
+        //         token::Token::Sym(token::Symbol::SemiColon),
+        //     ],
+        //     0,
+        //     &ClassName(token::Identifier("Main".to_string())),
+        // );
+        // let expected = (
+        //     LetStatement {
+        //         var_name: VarName(token::Identifier("a".to_string())),
+        //         array_index: Some(Expression {
+        //             term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
+        //             op_term: vec![],
+        //         }),
+        //         right_hand_side: Expression {
+        //             term: Box::new(Term::SubroutineCall(SubroutineCall {
+        //                 receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
+        //                 name: SubroutineName(token::Identifier("readInt".to_string())),
+        //                 arguments: ExpressionList(vec![Expression {
+        //                     term: Box::new(Term::StringConstant(token::StringConstant(
+        //                         "HOW MANY NUMBERS? ".to_string(),
+        //                     ))),
+        //                     op_term: vec![],
+        //                 }]),
+        //             })),
+        //             op_term: vec![],
+        //         },
+        //     },
+        //     13,
+        // );
+        // assert_eq!(input, expected);
+    }
+
+    #[test]
+    fn test_let_statement_new_for_debug() {
+        // let sum = sum + a[i];
+        let input = LetStatement::new(
+            &[
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("sum".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("sum".to_string())),
+                token::Token::Sym(token::Symbol::Plus),
+                token::Token::Identifier(token::Identifier("a".to_string())),
+                token::Token::Sym(token::Symbol::LeftBracket),
+                token::Token::Identifier(token::Identifier("i".to_string())),
+                token::Token::Sym(token::Symbol::RightBracket),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            LetStatement {
+                var_name: VarName(token::Identifier("a".to_string())),
+                array_index: Some(Expression {
+                    term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
+                    op_term: vec![],
+                }),
+                right_hand_side: Expression {
+                    term: Box::new(Term::SubroutineCall(SubroutineCall {
+                        receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
+                        name: SubroutineName(token::Identifier("readInt".to_string())),
+                        arguments: ExpressionList(vec![Expression {
+                            term: Box::new(Term::StringConstant(token::StringConstant(
+                                "HOW MANY NUMBERS? ".to_string(),
+                            ))),
+                            op_term: vec![],
+                        }]),
+                    })),
+                    op_term: vec![],
+                },
+            },
+            13,
         );
         assert_eq!(input, expected);
     }
