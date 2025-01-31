@@ -53,6 +53,7 @@
     - [x] `unaryOp`
     - [x] `op`
     - [ ] `term`
+        - [x] `SubroutineCall`
         - [ ] `varName[expression]`
         - [ ] `unaryOp term`
     - [ ] `expression`

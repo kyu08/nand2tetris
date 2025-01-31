@@ -829,7 +829,7 @@ impl DoStatement {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
-        (Self(subroutine_call), index)
+        (Self(subroutine_call.unwrap()), index)
     }
     fn to_string(&self) -> Vec<String> {
         let (open, close) = get_xml_tag("doStatement".to_string());
@@ -907,7 +907,6 @@ enum Term {
     VarName(VarName),
     Expression(Expression),
     SubroutineCall(SubroutineCall),
-    // TODO: あとで拡張する
 }
 impl Term {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
@@ -939,21 +938,10 @@ impl Term {
                 };
                 (Some(Term::Expression(expression.unwrap())), index)
             }
-            _ => {
-                let (subroutine_call, index) = SubroutineCall::new(tokens, index, class_name);
-
-                // TODO: ここをsubroutineCallに変更する
-                let index = match tokens.get(index) {
-                    Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
-                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
-                };
-                let (expression, index) = Expression::new(tokens, index, class_name);
-                let index = match tokens.get(index) {
-                    Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
-                    _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
-                };
-                (Some(Term::Expression(expression.unwrap())), index)
-            }
+            _ => match SubroutineCall::new(tokens, index, class_name) {
+                (Some(s), index) => (Some(Term::SubroutineCall(s)), index + 1),
+                _ => (None, index),
+            },
         }
     }
     fn to_string(&self) -> Vec<String> {
@@ -1006,7 +994,7 @@ struct SubroutineCall {
 }
 impl SubroutineCall {
     // NOTE: _class_nameは必要なくなったがあとで必要になるかもなのでいったん残しておく
-    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         // まずindex + 1を見て`.`があるか調べる
         let exist_receiver = matches!(tokens.get(index + 1), Some(token::Token::Sym(token::Symbol::Dot)));
 
@@ -1020,7 +1008,7 @@ impl SubroutineCall {
                         (Some(Receiver::VarName(VarName(i.clone()))), index + 1)
                     }
                 }
-                _ => panic!("{}", invalid_token(tokens, index)),
+                _ => (None, index),
             };
             // index番目に`.`があることは確認済みなのでindex + 1を見る
             let (name, index) = match tokens.get(index + 1) {
@@ -1041,17 +1029,17 @@ impl SubroutineCall {
             };
 
             (
-                Self {
+                Some(Self {
                     receiver,
                     name,
                     arguments,
-                },
+                }),
                 index,
             )
         } else {
             let (subroutine_name, index) = match tokens.get(index) {
                 Some(token::Token::Identifier(i)) => (SubroutineName(i.clone()), index + 1),
-                _ => panic!("{}", invalid_token(tokens, index)),
+                _ => return (None, index),
             };
             let index = match tokens.get(index) {
                 Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
@@ -1067,11 +1055,11 @@ impl SubroutineCall {
             };
 
             (
-                Self {
+                Some(Self {
                     receiver: None,
                     name: subroutine_name,
                     arguments,
-                },
+                }),
                 index,
             )
         }
@@ -1846,7 +1834,7 @@ mod test {
             &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
-            SubroutineCall {
+            Some(SubroutineCall {
                 receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Main".to_string())))),
                 name: SubroutineName(token::Identifier("show".to_string())),
                 arguments: ExpressionList(vec![
@@ -1857,7 +1845,7 @@ mod test {
                         term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
                     },
                 ]),
-            },
+            }),
             8,
         );
         assert_eq!(input, expected);
@@ -1877,11 +1865,11 @@ mod test {
             &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
-            SubroutineCall {
+            Some(SubroutineCall {
                 receiver: Some(Receiver::VarName(VarName(token::Identifier("person".to_string())))),
                 name: SubroutineName(token::Identifier("show".to_string())),
                 arguments: ExpressionList(vec![]),
-            },
+            }),
             5,
         );
         assert_eq!(input, expected);
@@ -1902,7 +1890,7 @@ mod test {
             &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
-            SubroutineCall {
+            Some(SubroutineCall {
                 receiver: None,
                 name: SubroutineName(token::Identifier("show".to_string())),
                 arguments: ExpressionList(vec![
@@ -1913,7 +1901,7 @@ mod test {
                         term: Box::new(Term::VarName(VarName(token::Identifier("y".to_string())))),
                     },
                 ]),
-            },
+            }),
             6,
         );
         assert_eq!(input, expected);
@@ -1931,11 +1919,11 @@ mod test {
             &ClassName(token::Identifier("Main".to_string())),
         );
         let expected = (
-            SubroutineCall {
+            Some(SubroutineCall {
                 receiver: None,
                 name: SubroutineName(token::Identifier("show".to_string())),
                 arguments: ExpressionList(vec![]),
-            },
+            }),
             3,
         );
         assert_eq!(input, expected);
