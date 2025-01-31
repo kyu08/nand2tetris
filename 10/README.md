@@ -50,7 +50,7 @@
     - [x] `test_data/ExpressionLessSquare/SquareGame.xml`
     - [x] `test_data/ExpressionLessSquare/Square.xml`
 - [ ] コンパイルエンジンの残りの部分を実装(式と配列)
-    - [ ] `unaryOp`
+    - [x] `unaryOp`
     - [ ] `op`
     - [ ] `term`
         - [ ] `varName[expression]`

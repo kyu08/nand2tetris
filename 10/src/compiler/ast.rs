@@ -1143,6 +1143,15 @@ impl UnaryOp {
             _ => (None, index),
         }
     }
+    #[allow(clippy::inherent_to_string)]
+    fn to_string(&self) -> String {
+        let content = match self {
+            UnaryOp::Minus => "-",
+            UnaryOp::Tilde => "~",
+        };
+        let (open, close) = get_xml_tag("symbol".to_string());
+        format!("{} {} {}", open, content, close)
+    }
 }
 
 fn invalid_token(tokens: &[token::Token], index: usize) -> String {
