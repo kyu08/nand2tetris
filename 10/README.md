@@ -65,7 +65,7 @@
         ```sh
         cargo run -- test_data/ArrayTest && diff -w -B test_data/ArrayTest/Main.xml test_data/ArrayTest/Main.gen.xml | head -n8
         ```
-    - [ ] `test_data/Square/Main.xml`
+    - [x] `test_data/Square/Main.xml`
         ```sh
         cargo run -- test_data/Square && diff -w -B test_data/Square/Main.xml test_data/Square/Main.gen.xml | head -n8
         ```

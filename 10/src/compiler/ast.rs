@@ -1038,7 +1038,12 @@ impl Term {
                 result.push(to_xml_tag(token::Symbol::RightBracket));
                 result
             }
-            Term::Expression(s) => s.to_string(),
+            Term::Expression(s) => {
+                let mut result = vec![to_xml_tag(token::Symbol::LeftParen)];
+                result = [result, s.to_string()].concat();
+                result.push(to_xml_tag(token::Symbol::RightParen));
+                result
+            }
             Term::UnaryOp(u, t) => {
                 let mut result = vec![u.to_string()];
                 result = [result, t.to_string()].concat();
