@@ -893,11 +893,7 @@ struct Expression {
     op_term: Vec<(Op, Term)>,
 }
 impl Expression {
-    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
-    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
-    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
-    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
-    TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
+    // TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         let (term, mut index) = match Term::new(tokens, index, class_name) {
             (Some(t), i) => (t, i),
@@ -968,17 +964,23 @@ impl Term {
                 (Some(Term::KeyWordConstant(KeyWordConstant::This)), index + 1)
             }
             Some(token::Token::Identifier(i)) => {
-                match (tokens.get(index + 1), tokens.get(index + 3)) {
-                    // VarName[index]のパターン
-                    (
-                        Some(token::Token::Sym(token::Symbol::LeftBracket)),
-                        Some(token::Token::Sym(token::Symbol::RightBracket)),
-                    ) => match Expression::new(tokens, index, class_name) {
-                        (Some(ex), index) => (Some(Term::ArrayIndexAccess(VarName(i.clone()), ex)), index + 4),
-                        // たまたま Identifier, [, なにか, ]という並びになる可能性もある。なのでVarName[index]としてパースできなかったら
-                        // VarNameとして扱っておく
-                        _ => (Some(Term::VarName(VarName(i.clone()))), index + 1),
-                    },
+                // VarName[index]のパターン
+                match tokens.get(index + 1) {
+                    Some(token::Token::Sym(token::Symbol::LeftBracket)) => {
+                        match Expression::new(tokens, index + 2, class_name) {
+                            (Some(ex), index) => match tokens.get(index) {
+                                Some(token::Token::Sym(token::Symbol::RightBracket)) => {
+                                    // index[len-2]みたいなパターンもあるので。Expression::new()
+                                    // から返ってきたindexを使う必要があることに注意
+                                    (Some(Term::ArrayIndexAccess(VarName(i.clone()), ex)), index + 1)
+                                }
+                                _ => panic!("{}", invalid_token(tokens, index)),
+                            },
+                            // たまたま Identifier, [, なにか, ]という並びになる可能性もある。なのでVarName[index]としてパースできなかったら
+                            // VarNameとして扱っておく
+                            _ => (Some(Term::VarName(VarName(i.clone()))), index + 1),
+                        }
+                    }
 
                     // VarNameのパターン
                     _ => (Some(Term::VarName(VarName(i.clone()))), index + 1),
@@ -2137,51 +2139,6 @@ mod test {
         );
         assert_eq!(input, expected);
 
-        // // let sum = sum + a[i];
-        // let input = LetStatement::new(
-        //     &[
-        //         token::Token::Key(token::Keyword::Let),
-        //         token::Token::Identifier(token::Identifier("sum".to_string())),
-        //         token::Token::Sym(token::Symbol::Equal),
-        //         token::Token::Identifier(token::Identifier("sum".to_string())),
-        //         token::Token::Sym(token::Symbol::Plus),
-        //         token::Token::Identifier(token::Identifier("a".to_string())),
-        //         token::Token::Sym(token::Symbol::LeftBracket),
-        //         token::Token::Identifier(token::Identifier("i".to_string())),
-        //         token::Token::Sym(token::Symbol::RightBracket),
-        //         token::Token::Sym(token::Symbol::SemiColon),
-        //     ],
-        //     0,
-        //     &ClassName(token::Identifier("Main".to_string())),
-        // );
-        // let expected = (
-        //     LetStatement {
-        //         var_name: VarName(token::Identifier("a".to_string())),
-        //         array_index: Some(Expression {
-        //             term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
-        //             op_term: vec![],
-        //         }),
-        //         right_hand_side: Expression {
-        //             term: Box::new(Term::SubroutineCall(SubroutineCall {
-        //                 receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
-        //                 name: SubroutineName(token::Identifier("readInt".to_string())),
-        //                 arguments: ExpressionList(vec![Expression {
-        //                     term: Box::new(Term::StringConstant(token::StringConstant(
-        //                         "HOW MANY NUMBERS? ".to_string(),
-        //                     ))),
-        //                     op_term: vec![],
-        //                 }]),
-        //             })),
-        //             op_term: vec![],
-        //         },
-        //     },
-        //     13,
-        // );
-        // assert_eq!(input, expected);
-    }
-
-    #[test]
-    fn test_let_statement_new_for_debug() {
         // let sum = sum + a[i];
         let input = LetStatement::new(
             &[
@@ -2201,26 +2158,23 @@ mod test {
         );
         let expected = (
             LetStatement {
-                var_name: VarName(token::Identifier("a".to_string())),
-                array_index: Some(Expression {
-                    term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
-                    op_term: vec![],
-                }),
+                var_name: VarName(token::Identifier("sum".to_string())),
+                array_index: None,
                 right_hand_side: Expression {
-                    term: Box::new(Term::SubroutineCall(SubroutineCall {
-                        receiver: Some(Receiver::ClassName(ClassName(token::Identifier("Keyboard".to_string())))),
-                        name: SubroutineName(token::Identifier("readInt".to_string())),
-                        arguments: ExpressionList(vec![Expression {
-                            term: Box::new(Term::StringConstant(token::StringConstant(
-                                "HOW MANY NUMBERS? ".to_string(),
-                            ))),
-                            op_term: vec![],
-                        }]),
-                    })),
-                    op_term: vec![],
+                    term: Box::new(Term::VarName(VarName(token::Identifier("sum".to_string())))),
+                    op_term: vec![(
+                        Op::Plus,
+                        Term::ArrayIndexAccess(
+                            VarName(token::Identifier("a".to_string())),
+                            Expression {
+                                term: Box::new(Term::VarName(VarName(token::Identifier("i".to_string())))),
+                                op_term: vec![],
+                            },
+                        ),
+                    )],
                 },
             },
-            13,
+            10,
         );
         assert_eq!(input, expected);
     }
