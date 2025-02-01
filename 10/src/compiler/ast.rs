@@ -615,9 +615,6 @@ impl LetStatement {
 
         let mut array_index = None;
         if let Some(token::Token::Sym(token::Symbol::LeftBracket)) = tokens.get(index) {
-            // let sum = sum + a[i]; のパースでstack over flowになることがわかった。
-            // ここをindex +1 にするとfatal runtime error: stack overflowになる、、、
-            // stack over flowを起こしているデータフローを確認する
             if let (Some(e), returned_index) = Expression::new(tokens, index + 1, class_name) {
                 match tokens.get(returned_index) {
                     Some(token::Token::Sym(token::Symbol::RightBracket)) => {
@@ -899,12 +896,11 @@ impl ReturnStatement {
  */
 #[derive(Debug, PartialEq, Eq)]
 struct Expression {
-    // 循環参照になってしまうのでBoxでくるんでいる
+    // 再帰参照になってしまうのでBoxでくるんでいる
     term: Box<Term>,
     op_term: Vec<(Op, Term)>,
 }
 impl Expression {
-    // TODO: sum + a[i] をパースできそうかチェック（おそらくどこかをミスってて無限ループになってる
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
         let (term, mut index) = match Term::new(tokens, index, class_name) {
             (Some(t), i) => (t, i),
@@ -913,6 +909,7 @@ impl Expression {
 
         let mut op_term = vec![];
         while let (Some(o), op_index) = Op::new(tokens, index) {
+            index = op_index;
             if let (Some(t), term_index) = Term::new(tokens, op_index, class_name) {
                 index = term_index;
                 op_term.push((o, t));
@@ -955,7 +952,6 @@ enum Term {
 }
 impl Term {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
-        // これが誤って呼ばれている。
         if let (Some(s), index) = SubroutineCall::new(tokens, index, class_name) {
             return (Some(Term::SubroutineCall(s)), index);
         }
@@ -1003,6 +999,7 @@ impl Term {
                     _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
                 };
                 let (expression, index) = Expression::new(tokens, index, class_name);
+
                 let index = match tokens.get(index) {
                     Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
                     _ => return (None, index), // ExpressionListから見るとtermが空のパターンもあるのでpanicしてはならない
@@ -1014,7 +1011,9 @@ impl Term {
             _ => {
                 if let (Some(u), index) = UnaryOp::new(tokens, index) {
                     match Term::new(tokens, index, class_name) {
-                        (Some(t), index) => return (Some(Term::UnaryOp(u, Box::new(t))), index + 1),
+                        (Some(t), index) => {
+                            return (Some(Term::UnaryOp(u, Box::new(t))), index);
+                        }
                         _ => panic!("{}", invalid_token(tokens, index)),
                     }
                 };
@@ -1225,8 +1224,8 @@ impl ExpressionList {
 enum Op {
     Plus,
     Minus,
-    Asterisk,
-    Slash,
+    Multiply,
+    Div,
     Ampersand,
     Pipe,
     LessThan,
@@ -1238,8 +1237,8 @@ impl Op {
         match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::Plus)) => (Some(Op::Plus), index + 1),
             Some(token::Token::Sym(token::Symbol::Minus)) => (Some(Op::Minus), index + 1),
-            Some(token::Token::Sym(token::Symbol::Asterisk)) => (Some(Op::Asterisk), index + 1),
-            Some(token::Token::Sym(token::Symbol::Slash)) => (Some(Op::Slash), index + 1),
+            Some(token::Token::Sym(token::Symbol::Asterisk)) => (Some(Op::Multiply), index + 1),
+            Some(token::Token::Sym(token::Symbol::Slash)) => (Some(Op::Div), index + 1),
             Some(token::Token::Sym(token::Symbol::Ampersand)) => (Some(Op::Ampersand), index + 1),
             Some(token::Token::Sym(token::Symbol::Pipe)) => (Some(Op::Pipe), index + 1),
             Some(token::Token::Sym(token::Symbol::LessThan)) => (Some(Op::LessThan), index + 1),
@@ -1253,8 +1252,8 @@ impl Op {
         let content = match self {
             Op::Plus => "+".to_string(),
             Op::Minus => "-".to_string(),
-            Op::Asterisk => "*".to_string(),
-            Op::Slash => "/".to_string(),
+            Op::Multiply => "*".to_string(),
+            Op::Div => "/".to_string(),
             Op::Ampersand => "&amp;".to_string(),
             Op::Pipe => "|".to_string(),
             Op::LessThan => "&lt;".to_string(),
@@ -2188,6 +2187,45 @@ mod test {
             10,
         );
         assert_eq!(input, expected);
+
+        // let j = j / (-2);
+        let input = LetStatement::new(
+            &[
+                token::Token::Key(token::Keyword::Let),
+                token::Token::Identifier(token::Identifier("j".to_string())),
+                token::Token::Sym(token::Symbol::Equal),
+                token::Token::Identifier(token::Identifier("j".to_string())),
+                token::Token::Sym(token::Symbol::Slash),
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::Minus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::RightParen),
+                token::Token::Sym(token::Symbol::SemiColon),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            LetStatement {
+                var_name: VarName(token::Identifier("j".to_string())),
+                array_index: None,
+                right_hand_side: Expression {
+                    term: Box::new(Term::VarName(VarName(token::Identifier("j".to_string())))),
+                    op_term: vec![(
+                        Op::Div,
+                        Term::Expression(Expression {
+                            term: Box::new(Term::UnaryOp(
+                                UnaryOp::Minus,
+                                Box::new(Term::IntegerConstant(token::IntegerConstant(1))),
+                            )),
+                            op_term: vec![],
+                        }),
+                    )],
+                },
+            },
+            10,
+        );
+        assert_eq!(input, expected);
     }
 
     #[test]
@@ -2777,6 +2815,58 @@ mod test {
                 ],
             }),
             5,
+        );
+        assert_eq!(input, expected);
+
+        /*
+            term op term op term
+        */
+        let input = Expression::new(
+            &[
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::Plus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+                token::Token::Sym(token::Symbol::Minus),
+                token::Token::IntegerConstant(token::IntegerConstant(1)),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Expression {
+                term: Box::new(Term::IntegerConstant(token::IntegerConstant(1))),
+                op_term: vec![
+                    (Op::Plus, Term::IntegerConstant(token::IntegerConstant(1))),
+                    (Op::Minus, Term::IntegerConstant(token::IntegerConstant(1))),
+                ],
+            }),
+            5,
+        );
+        assert_eq!(input, expected);
+
+        // (-2)
+        let input = Expression::new(
+            &[
+                token::Token::Sym(token::Symbol::LeftParen),
+                token::Token::Sym(token::Symbol::Minus),
+                token::Token::IntegerConstant(token::IntegerConstant(2)),
+                token::Token::Sym(token::Symbol::RightParen),
+            ],
+            0,
+            &ClassName(token::Identifier("Main".to_string())),
+        );
+        let expected = (
+            Some(Expression {
+                term: Box::new(Term::Expression(Expression {
+                    term: Box::new(Term::UnaryOp(
+                        UnaryOp::Minus,
+                        Box::new(Term::IntegerConstant(token::IntegerConstant(2))),
+                    )),
+                    op_term: vec![],
+                })),
+                op_term: vec![],
+            }),
+            4,
         );
         assert_eq!(input, expected);
     }
