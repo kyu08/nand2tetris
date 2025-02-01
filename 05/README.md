@@ -1,4 +1,4 @@
-- [ ] Memory
-- [ ] CPU
-- [ ] 命令メモリ
-- [ ] Computer
+- [x] Memory
+- [x] CPU
+- [x] 命令メモリ
+- [x] Computer

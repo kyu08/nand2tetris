@@ -164,7 +164,6 @@ impl ClassVarDec {
             class_var_decs.push(Self { kind, type_, var_names });
         }
 
-        // ここから(可能な数だけSelfへのparseを試みる。失敗した位置が次の要素の場所なのでそのindexを返す(+1して返さないように注意))
         (class_var_decs, index)
     }
 
