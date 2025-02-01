@@ -495,7 +495,10 @@ impl VarDec {
         result.push(open);
         result.push(to_xml_tag(token::Keyword::Var));
         result.push(self.type_.to_string());
-        for n in &self.var_name {
+        for (index, n) in self.var_name.iter().enumerate() {
+            if index != 0 {
+                result.push(to_xml_tag(token::Symbol::Comma));
+            }
             result.push(n.to_string());
         }
         if !&self.var_name.is_empty() {
@@ -654,6 +657,14 @@ impl LetStatement {
         let mut result = vec![open];
         result.push(to_xml_tag(token::Keyword::Let));
         result.push(self.var_name.to_string());
+
+        // index
+        if let Some(a) = &self.array_index {
+            result.push(to_xml_tag(token::Symbol::LeftBracket));
+            result = [result, a.to_string()].concat();
+            result.push(to_xml_tag(token::Symbol::RightBracket));
+        }
+
         result.push(to_xml_tag(token::Symbol::Equal));
         result = [result, self.right_hand_side.to_string()].concat();
         result.push(to_xml_tag(token::Symbol::SemiColon));
@@ -1244,10 +1255,10 @@ impl Op {
             Op::Minus => "-".to_string(),
             Op::Asterisk => "*".to_string(),
             Op::Slash => "/".to_string(),
-            Op::Ampersand => "&".to_string(),
+            Op::Ampersand => "&amp;".to_string(),
             Op::Pipe => "|".to_string(),
-            Op::LessThan => "<".to_string(),
-            Op::MoreThan => ">".to_string(),
+            Op::LessThan => "&lt;".to_string(),
+            Op::MoreThan => "&gt;".to_string(),
             Op::Equal => "=".to_string(),
         };
         let (open, close) = get_xml_tag("symbol".to_string());

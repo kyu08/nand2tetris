@@ -61,7 +61,7 @@
     - [x] `letStatement`
         - [x] `varName[expression]`
 - [ ] 以下のテストをパスすることを確認
-    - [ ] `test_data/ArrayTest/Main.xml`
+    - [x] `test_data/ArrayTest/Main.xml`
     - [ ] `test_data/Square/Main.xml`
     - [ ] `test_data/Square/SquareGame.xml`
     - [ ] `test_data/Square/Square.xml`
