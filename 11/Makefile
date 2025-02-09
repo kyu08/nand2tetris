@@ -11,7 +11,10 @@ tool-test:
 	fi
 
 test: tool-test
-	RUST_BACKTRACE=full cargo nextest run
+	RUST_BACKTRACE=1 cargo nextest run
+
+test-watch: tool-test
+	RUST_BACKTRACE=1 cargo watch -x "nextest run"
 
 build:
 	@cargo build
@@ -22,5 +25,4 @@ fmt:
 check:
 	@cargo clippy -- -D warnings
 
-.PHONY: ci tool-test test build fmt check
-
+.PHONY: ci tool-test test test-watch build fmt check
