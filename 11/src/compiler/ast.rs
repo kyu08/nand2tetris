@@ -4,10 +4,105 @@ pub struct Ast {
     class: Class,
 }
 
+#[derive(Clone)]
+struct SymbolTables {
+    class_scope: std::collections::HashMap<String, ClassSymbol>,
+    subroutine_scope: std::collections::HashMap<String, SubroutineSymbol>,
+}
+impl SymbolTables {
+    fn default() -> Self {
+        Self {
+            class_scope: std::collections::HashMap::new(),
+            subroutine_scope: std::collections::HashMap::new(),
+        }
+    }
+    fn determine_next_item_index_class(&self, symbol_type: &ClassSymbolType) -> usize {
+        let mut next_item_index = 0;
+        for v in self.class_scope.values() {
+            if v.symbol_type == *symbol_type {
+                next_item_index += 1;
+            }
+        }
+
+        next_item_index
+    }
+    fn determine_next_item_index_subroutine(&self, symbol_type: &SubroutineSymbolType) -> usize {
+        let mut next_item_index = 0;
+        for v in self.subroutine_scope.values() {
+            if v.symbol_type == *symbol_type {
+                next_item_index += 1;
+            }
+        }
+
+        next_item_index
+    }
+    fn append_class_symbol(&self, name: String, type_: Type, symbol_type: ClassSymbolType) -> Self {
+        let index = self.determine_next_item_index_class(&symbol_type);
+        let sym = ClassSymbol {
+            name: name.clone(),
+            type_,
+            symbol_type,
+            index,
+        };
+        let mut st = self.clone();
+        let _ = st.class_scope.insert(name, sym);
+        st
+    }
+    fn append_subroutine_symbol(&self, name: String, type_: Type, symbol_type: SubroutineSymbolType) -> Self {
+        let index = self.determine_next_item_index_subroutine(&symbol_type);
+        let sym = SubroutineSymbol {
+            name: name.clone(),
+            type_,
+            symbol_type,
+            index,
+        };
+        let mut st = self.clone();
+        let _ = st.subroutine_scope.insert(name, sym);
+        st
+    }
+    fn refresh_subroutine_symbol(&self) -> Self {
+        let mut st = self.clone();
+        st.subroutine_scope = std::collections::HashMap::new();
+        st
+    }
+}
+
+// symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
+// 不適切な共通化な気がしたのでしていない。(共通化が)必要になったらそのときに検討する。
+#[allow(dead_code)]
+#[derive(Clone)]
+struct ClassSymbol {
+    name: String,
+    type_: Type,
+    symbol_type: ClassSymbolType,
+    index: usize,
+}
+#[derive(PartialEq, Eq, Clone)]
+enum ClassSymbolType {
+    Static,
+    Field,
+}
+#[allow(dead_code)]
+#[derive(Clone)]
+struct SubroutineSymbol {
+    name: String,
+    type_: Type,
+    symbol_type: SubroutineSymbolType,
+    index: usize,
+}
+#[allow(dead_code)]
+#[derive(Clone, PartialEq, Eq)]
+enum SubroutineSymbolType {
+    Var,
+    Arg,
+    Subroutine,
+}
+
 impl Ast {
     pub fn new(tokens: Vec<token::Token>) -> Self {
+        let symbol_tables = SymbolTables::default();
         let class = match tokens.first() {
-            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0) {
+            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0, symbol_tables) {
                 Some(class) => class,
                 _ => panic!("{}", invalid_token(&tokens, 1)),
             },
@@ -23,6 +118,17 @@ impl Ast {
     }
 }
 
+// シンボルテーブルの仕様メモ
+// ## 保持したいデータ
+// - name: 変数名
+// - category: class_scope(field / static) / subroutine_scope(var / arg / subroutine)
+// - index: そのスコープにおけるcategory別の0-originのindex
+// - usage:  宣言されているか(field / static / var) / 使用されているか(Jack式に現れる)
+//
+// ## その他仕様
+// - class_scopeのシンボルテーブルとsobroutine_scopeのシンボルテーブルを別々に管理する必要がある
+// - subroutineの処理を開始するタイミングでsubroutine_scopeのシンボルテーブルはrefreshされる必要がある
+
 /*
  * プログラムの構造
  */
@@ -34,7 +140,7 @@ struct Class {
 }
 impl Class {
     // parse結果を返す。ひとまずindexは返さない
-    fn new(tokens: &[token::Token], index: usize) -> Option<Self> {
+    fn new(tokens: &[token::Token], index: usize, symbol_tables: SymbolTables) -> Option<Self> {
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Class)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, 0)),
@@ -48,12 +154,15 @@ impl Class {
             }
         };
 
-        let (var_dec, index) = ClassVarDec::new(tokens, index);
+        let (var_dec, index, mut symbol_tables) = ClassVarDec::new(tokens, index, symbol_tables);
         let mut subroutine_dec = vec![];
         let mut index = index;
-        while let (Some(s), returned_index) = SubroutineDec::new(tokens, index, &name) {
+        while let (Some(s), returned_index, returned_symbol_tables) =
+            SubroutineDec::new(tokens, index, &name, symbol_tables.clone())
+        {
             subroutine_dec.push(s);
             index = returned_index;
+            symbol_tables = returned_symbol_tables;
         }
 
         match tokens.get(index) {
@@ -97,7 +206,7 @@ struct ClassVarDec {
 impl ClassVarDec {
     // parse結果と次のトークンの読み出し位置を返す
     // FIXME: SubroutineDec::newは単数を返すのにこっちはVecを返すのは一貫性がないので直してもいいかもしれない
-    fn new(tokens: &[token::Token], index: usize) -> (Vec<Self>, usize) {
+    fn new(tokens: &[token::Token], index: usize, mut symbol_tables: SymbolTables) -> (Vec<Self>, usize, SymbolTables) {
         let mut class_var_decs = vec![];
         let mut index = index;
         loop {
@@ -161,10 +270,15 @@ impl ClassVarDec {
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
 
+            for var_name in &var_names {
+                // シンボルテーブルを更新
+                symbol_tables =
+                    symbol_tables.append_class_symbol(var_name.to_string(), type_.clone(), kind.clone().into());
+            }
             class_var_decs.push(Self { kind, type_, var_names });
         }
 
-        (class_var_decs, index)
+        (class_var_decs, index, symbol_tables)
     }
 
     fn to_string(&self) -> Vec<String> {
@@ -188,7 +302,7 @@ impl ClassVarDec {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum ClassVarKind {
     Static,
     Field,
@@ -200,8 +314,16 @@ impl ClassVarKind {
         format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
 }
+impl From<ClassVarKind> for ClassSymbolType {
+    fn from(kind: ClassVarKind) -> Self {
+        match kind {
+            ClassVarKind::Static => ClassSymbolType::Static,
+            ClassVarKind::Field => ClassSymbolType::Field,
+        }
+    }
+}
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Type {
     Int,
     Char,
@@ -242,10 +364,17 @@ struct SubroutineDec {
     body: SubroutineBody,
 }
 impl SubroutineDec {
-    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Option<Self>, usize) {
+    fn new(
+        tokens: &[token::Token],
+        index: usize,
+        class_name: &ClassName,
+        symbol_tables: SymbolTables,
+    ) -> (Option<Self>, usize, SymbolTables) {
+        let symbol_tables = symbol_tables.refresh_subroutine_symbol();
+
         let (kind, index) = match SubroutineDecKind::new(tokens, index) {
             (Some(k), i) => (k, i),
-            _ => return (None, index),
+            _ => return (None, index, symbol_tables),
         };
         let (type_, index) = SubroutineDecType::new(tokens, index);
         let (subroutine_name, index) = match tokens.get(index) {
@@ -256,12 +385,12 @@ impl SubroutineDec {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (parameter_list, index) = ParameterList::new(tokens, index);
+        let (parameter_list, index, symbol_tables) = ParameterList::new(tokens, index, symbol_tables);
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
-        let (body, index) = SubroutineBody::new(tokens, index, class_name);
+        let (body, index, symbol_tables) = SubroutineBody::new(tokens, index, class_name, symbol_tables);
 
         (
             Some(Self {
@@ -272,6 +401,7 @@ impl SubroutineDec {
                 body,
             }),
             index,
+            symbol_tables,
         )
     }
     fn to_string(&self) -> Vec<String> {
@@ -345,7 +475,7 @@ impl ParameterList {
     // パターンメモ
     // ``: 引数なし
     // `type var_name, type var_name, ..., type var_name`: n個の引数
-    fn new(tokens: &[token::Token], index: usize) -> (Self, usize) {
+    fn new(tokens: &[token::Token], index: usize, mut symbol_tables: SymbolTables) -> (Self, usize, SymbolTables) {
         let mut index = index;
         let mut param_list = vec![];
         while let (Some(type_), returned_index) = Type::new(tokens, index) {
@@ -359,7 +489,9 @@ impl ParameterList {
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
 
-            param_list.push((type_, var_name));
+            param_list.push((type_.clone(), var_name.clone()));
+            symbol_tables =
+                symbol_tables.append_subroutine_symbol(var_name.to_string(), type_, SubroutineSymbolType::Arg);
 
             // `,`があるときだけ継続
             match tokens.get(index) {
@@ -370,7 +502,7 @@ impl ParameterList {
             }
         }
 
-        (Self(param_list), index)
+        (Self(param_list), index, symbol_tables)
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> Vec<String> {
@@ -395,7 +527,12 @@ struct SubroutineBody {
     statements: Statements,
 }
 impl SubroutineBody {
-    fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
+    fn new(
+        tokens: &[token::Token],
+        index: usize,
+        class_name: &ClassName,
+        mut symbol_tables: SymbolTables,
+    ) -> (Self, usize, SymbolTables) {
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::LeftBrace)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -403,9 +540,12 @@ impl SubroutineBody {
 
         let mut var_dec = vec![];
         let mut index = index;
-        while let (Some(got), returned_index) = VarDec::new(tokens, index) {
+        while let (Some(got), returned_index, returned_symbol_tables) =
+            VarDec::new(tokens, index, symbol_tables.clone())
+        {
             var_dec.push(got);
             index = returned_index;
+            symbol_tables = returned_symbol_tables;
         }
 
         let (statements, index) = Statements::new(tokens, index, class_name);
@@ -415,7 +555,7 @@ impl SubroutineBody {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
-        (Self { var_dec, statements }, index)
+        (Self { var_dec, statements }, index, symbol_tables)
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> Vec<String> {
@@ -445,28 +585,16 @@ struct VarDec {
     type_: Type,
     var_name: Vec<VarName>,
 }
-/// VarDecの新しいインスタンスを作成します。
-///
-/// # 引数
-/// * `tokens` - パースするトークンのスライス
-/// * `index` - 現在のトークンのインデックス
-///
-/// # 戻り値
-/// * `(Option<Self>, usize)` - パース結果とその後のインデックス
-///   - パースに成功した場合は `(Some(VarDec), 次のインデックス)`
-///   - 先頭が `var` キーワードでない場合は `(None, 元のインデックス)`
-///
-/// # パニック
-/// * `var` キーワードの後に有効な型が続かない場合
-/// * 変数名が識別子でない場合
-/// * カンマの後に有効な変数名が続かない場合
-/// * セミコロンで終わっていない場合
 impl VarDec {
-    fn new(tokens: &[token::Token], index: usize) -> (Option<Self>, usize) {
+    fn new(
+        tokens: &[token::Token],
+        index: usize,
+        mut symbol_tables: SymbolTables,
+    ) -> (Option<Self>, usize, SymbolTables) {
         let mut var_name = vec![];
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Var)) => index + 1,
-            _ => return (None, index),
+            _ => return (None, index, symbol_tables),
         };
 
         let (type_, index) = match Type::new(tokens, index) {
@@ -485,7 +613,7 @@ impl VarDec {
         while let Some(token::Token::Sym(token::Symbol::Comma)) = tokens.get(index) {
             index += 1;
 
-            let var_name_hoge_should_rename = match tokens.get(index) {
+            let var_name_new = match tokens.get(index) {
                 Some(token::Token::Identifier(i)) => {
                     index += 1;
                     VarName(token::Identifier(i.clone().0))
@@ -493,7 +621,12 @@ impl VarDec {
                 _ => panic!("{}", invalid_token(tokens, index)),
             };
 
-            var_name.push(var_name_hoge_should_rename);
+            var_name.push(var_name_new.clone());
+            symbol_tables = symbol_tables.append_subroutine_symbol(
+                var_name_new.to_string(),
+                type_.clone(),
+                SubroutineSymbolType::Var,
+            );
         }
 
         // 最後にセミコロンがあることをチェック
@@ -502,7 +635,7 @@ impl VarDec {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
-        (Some(Self { type_, var_name }), index)
+        (Some(Self { type_, var_name }), index, symbol_tables)
     }
     fn to_string(&self) -> Vec<String> {
         let mut result = vec![];
@@ -539,7 +672,7 @@ impl ClassName {
 
 #[derive(Debug, PartialEq, Eq)]
 struct SubroutineName(token::Identifier);
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
 impl VarName {
     #[allow(clippy::inherent_to_string)]
@@ -1359,6 +1492,7 @@ mod test {
              }
         }
         */
+
         let input = Class::new(
             &vec![
                 token::Token::Key(token::Keyword::Class),
@@ -1423,6 +1557,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
+            SymbolTables::default(),
         );
         let expected = Some(Class {
             name: ClassName(token::Identifier("SquareGame".to_string())),
@@ -1524,6 +1659,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             3,
+            SymbolTables::default(),
         );
         let expected = (
             vec![
@@ -1543,7 +1679,8 @@ mod test {
             ],
             13,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
     }
 
     #[test]
@@ -1591,6 +1728,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
+            SymbolTables::default(),
         );
         let expected = (
             Some(SubroutineDec {
@@ -1632,7 +1770,8 @@ mod test {
             }),
             29,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
 
         /*
              function void dispose() {
@@ -1670,6 +1809,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
+            SymbolTables::default(),
         );
         let expected = (
             Some(SubroutineDec {
@@ -1699,7 +1839,8 @@ mod test {
             }),
             24,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
 
         /*
              method void moveSquare() {
@@ -1744,6 +1885,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
+            SymbolTables::default(),
         );
         let expected = (
             Some(SubroutineDec {
@@ -1780,7 +1922,8 @@ mod test {
             }),
             30,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
     }
 
     #[test]
@@ -1813,6 +1956,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            SymbolTables::default(),
         );
         let expected = (
             Some(VarDec {
@@ -1821,7 +1965,8 @@ mod test {
             }),
             4,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
 
         // var int x, y, z;
         let input = VarDec::new(
@@ -1836,6 +1981,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
+            SymbolTables::default(),
         );
         let expected = (
             Some(VarDec {
@@ -1848,7 +1994,8 @@ mod test {
             }),
             8,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
     }
 
     #[test]
@@ -1865,6 +2012,7 @@ mod test {
                 token::Token::Identifier(token::Identifier("y".to_string())),
             ],
             0,
+            SymbolTables::default(),
         );
         let expected = (
             ParameterList(vec![
@@ -1873,14 +2021,16 @@ mod test {
             ]),
             5,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
 
         /*
             (引数なし)
         */
-        let input = ParameterList::new(&[], 0);
+        let input = ParameterList::new(&[], 0, SymbolTables::default());
         let expected = (ParameterList(vec![]), 0);
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
     }
 
     #[test]
@@ -2576,6 +2726,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("Main".to_string())),
+            SymbolTables::default(),
         );
         let expected = (
             SubroutineBody {
@@ -2603,7 +2754,8 @@ mod test {
             },
             16,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
 
         /*  var_decもstatementsもなしのパターン
             {}
@@ -2615,6 +2767,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("Main".to_string())),
+            SymbolTables::default(),
         );
         let expected = (
             SubroutineBody {
@@ -2623,7 +2776,8 @@ mod test {
             },
             2,
         );
-        assert_eq!(input, expected);
+        assert_eq!(input.0, expected.0);
+        assert_eq!(input.1, expected.1);
     }
 
     #[test]
