@@ -3,6 +3,8 @@
 - [ ] シンボルテーブルに変数を加える実装
     - [ ] 実装する
     - [ ] コード出力時にシンボルテーブルの情報を出力する(field, static, var, arg, class, subroutine)
+    - [ ] subroutineのsymbol_tableへの追加ってなにすればいいんだっけ？
+    - [ ] symbol_tableの実装がうまく動いてそうなことを確認
 - [ ] コード生成の実装
     - [ ] 実装する
     - [ ] テスト
