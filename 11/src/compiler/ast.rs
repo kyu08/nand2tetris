@@ -65,25 +65,37 @@ impl SymbolTables {
         st.subroutine_scope = std::collections::HashMap::new();
         st
     }
+    fn debug_class_symbol_table(&self) {
+        println!("class_scope:");
+        for v in self.class_scope.values() {
+            println!("\t{:?} {:?} {} #{}", v.symbol_type, v.type_, v.name, v.index);
+        }
+    }
+    fn debug_subroutine_symbol_table(&self, subroutine_name: String) {
+        println!("subroutine_scope({}):", subroutine_name);
+        for v in self.subroutine_scope.values() {
+            println!("\t{:?} {:?} {} #{}", v.symbol_type, v.type_, v.name, v.index);
+        }
+    }
 }
 
 // symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
 // 不適切な共通化な気がしたのでしていない。(共通化が)必要になったらそのときに検討する。
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct ClassSymbol {
     name: String,
     type_: Type,
     symbol_type: ClassSymbolType,
     index: usize,
 }
-#[derive(PartialEq, Eq, Clone)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 enum ClassSymbolType {
     Static,
     Field,
 }
 #[allow(dead_code)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct SubroutineSymbol {
     name: String,
     type_: Type,
@@ -91,7 +103,7 @@ struct SubroutineSymbol {
     index: usize,
 }
 #[allow(dead_code)]
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Debug, Eq)]
 enum SubroutineSymbolType {
     Var,
     Arg,
@@ -126,7 +138,7 @@ impl Ast {
 // - usage:  宣言されているか(field / static / var) / 使用されているか(Jack式に現れる)
 //
 // ## その他仕様
-// - class_scopeのシンボルテーブルとsobroutine_scopeのシンボルテーブルを別々に管理する必要がある
+// - class_scopeのシンボルテーブルとsubroutine_scopeのシンボルテーブルを別々に管理する必要がある
 // - subroutineの処理を開始するタイミングでsubroutine_scopeのシンボルテーブルはrefreshされる必要がある
 
 /*
@@ -170,6 +182,7 @@ impl Class {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
+        symbol_tables.debug_class_symbol_table();
         Some(Class {
             name,
             var_dec,
@@ -273,7 +286,7 @@ impl ClassVarDec {
             for var_name in &var_names {
                 // シンボルテーブルを更新
                 symbol_tables =
-                    symbol_tables.append_class_symbol(var_name.to_string(), type_.clone(), kind.clone().into());
+                    symbol_tables.append_class_symbol(var_name.clone().0 .0, type_.clone(), kind.clone().into());
             }
             class_var_decs.push(Self { kind, type_, var_names });
         }
@@ -392,6 +405,8 @@ impl SubroutineDec {
         };
         let (body, index, symbol_tables) = SubroutineBody::new(tokens, index, class_name, symbol_tables);
 
+        symbol_tables.debug_subroutine_symbol_table(subroutine_name.clone().0);
+
         (
             Some(Self {
                 kind,
@@ -490,8 +505,7 @@ impl ParameterList {
             };
 
             param_list.push((type_.clone(), var_name.clone()));
-            symbol_tables =
-                symbol_tables.append_subroutine_symbol(var_name.to_string(), type_, SubroutineSymbolType::Arg);
+            symbol_tables = symbol_tables.append_subroutine_symbol(var_name.0 .0, type_, SubroutineSymbolType::Arg);
 
             // `,`があるときだけ継続
             match tokens.get(index) {
@@ -605,6 +619,8 @@ impl VarDec {
         let mut index = match tokens.get(index) {
             Some(token::Token::Identifier(token::Identifier(id))) => {
                 var_name.push(VarName(token::Identifier(id.clone())));
+                symbol_tables =
+                    symbol_tables.append_subroutine_symbol(id.clone(), type_.clone(), SubroutineSymbolType::Var);
                 index + 1
             }
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -622,11 +638,8 @@ impl VarDec {
             };
 
             var_name.push(var_name_new.clone());
-            symbol_tables = symbol_tables.append_subroutine_symbol(
-                var_name_new.to_string(),
-                type_.clone(),
-                SubroutineSymbolType::Var,
-            );
+            symbol_tables =
+                symbol_tables.append_subroutine_symbol(var_name_new.0 .0, type_.clone(), SubroutineSymbolType::Var);
         }
 
         // 最後にセミコロンがあることをチェック
