@@ -8,11 +8,11 @@
 - [ ] コード生成の実装
     - [ ] 実装する
     - [ ] テスト
-        - [ ] Seven
+        - [x] Seven
             - [x] 式をコンパイル
             - [x] do statementをコンパイル
-            - [ ] subroutineをコンパイル
-            - [ ] 不要なxmlを削除
+            - [x] subroutineをコンパイル
+            - [x] 不要なxmlを削除
         - [ ] ConvertToBin
         - [ ] Square
         - [ ] Average

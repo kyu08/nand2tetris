@@ -3,3 +3,6 @@ launch-hardware-simulator:
 
 launch-cpu-emulator:
 	@../tools/CPUEmulator.sh
+
+launch-vm-emulator:
+	@../tools/VMEmulator.sh
