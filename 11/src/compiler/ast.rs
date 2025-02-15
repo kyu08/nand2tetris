@@ -193,20 +193,20 @@ impl Class {
 
     pub fn to_string(&self) -> Vec<String> {
         let mut result = vec![];
-        let (class_open, class_close) = get_xml_tag("class".to_string());
-        result.push(class_open);
-        result.push(to_xml_tag(token::Keyword::Class));
-        result.push(self.name.0.to_string());
-        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        // let (class_open, class_close) = get_xml_tag("class".to_string());
+        // result.push(class_open);
+        // result.push(to_xml_tag(token::Keyword::Class));
+        // result.push(self.name.0.to_string());
+        // result.push(to_xml_tag(token::Symbol::LeftBrace));
         for var_dec in &self.var_dec {
             result = [result, var_dec.to_string()].concat();
         }
         for subroutine in &self.subroutine_dec {
-            result = [result, subroutine.to_string()].concat();
+            result = [result, subroutine.to_string(&self.name)].concat();
         }
 
-        result.push(to_xml_tag(token::Symbol::RightBrace));
-        result.push(class_close);
+        // result.push(to_xml_tag(token::Symbol::RightBrace));
+        // result.push(class_close);
         result
     }
 }
@@ -420,18 +420,24 @@ impl SubroutineDec {
             symbol_tables,
         )
     }
-    fn to_string(&self) -> Vec<String> {
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("subroutineDec".to_string());
-        result.push(open);
-        result.push(self.kind.to_string());
-        result.push(self.type_.to_string());
-        result.push(self.subroutine_name.to_string());
-        result.push(to_xml_tag(token::Symbol::LeftParen));
-        result = [result, self.parameter_list.to_string()].concat();
-        result.push(to_xml_tag(token::Symbol::RightParen));
+    fn to_string(&self, class_name: &ClassName) -> Vec<String> {
+        let mut result = vec![format!(
+            "function {}.{} {}",
+            class_name.0.to_string(),
+            self.subroutine_name.0,
+            self.parameter_list.0.len()
+        )];
+
+        // let (open, close) = get_xml_tag("subroutineDec".to_string());
+        // result.push(open);
+        // result.push(self.kind.to_string());
+        // result.push(self.type_.to_string());
+        // result.push(self.subroutine_name.to_string());
+        // result.push(to_xml_tag(token::Symbol::LeftParen));
+        // result = [result, self.parameter_list.to_string()].concat();
+        // result.push(to_xml_tag(token::Symbol::RightParen));
         result = [result, self.body.to_string()].concat();
-        result.push(close);
+        // result.push(close);
         result
     }
 }
@@ -575,22 +581,22 @@ impl SubroutineBody {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> Vec<String> {
         let mut result = vec![];
-        let (open, close) = get_xml_tag("subroutineBody".to_string());
-        result.push(open);
-        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        // let (open, close) = get_xml_tag("subroutineBody".to_string());
+        // result.push(open);
+        // result.push(to_xml_tag(token::Symbol::LeftBrace));
         for v in &self.var_dec {
             result = [result, v.to_string()].concat();
         }
         if !&self.statements.0.is_empty() {
-            let (open, close) = get_xml_tag("statements".to_string());
-            result.push(open);
+            // let (open, close) = get_xml_tag("statements".to_string());
+            // result.push(open);
             for s in &self.statements.0 {
                 result = [result, s.to_string()].concat();
             }
-            result.push(close);
+            // result.push(close);
         }
-        result.push(to_xml_tag(token::Symbol::RightBrace));
-        result.push(close);
+        // result.push(to_xml_tag(token::Symbol::RightBrace));
+        // result.push(close);
         result
     }
 }
@@ -1037,15 +1043,10 @@ impl ReturnStatement {
         (Self(expression), index)
     }
     fn to_string(&self) -> Vec<String> {
-        let (open, close) = get_xml_tag("returnStatement".to_string());
-        let mut result = vec![open];
-        result.push(to_xml_tag(token::Keyword::Return));
-        if let Some(e) = &self.0 {
-            result = [result, e.to_string()].concat()
+        match &self.0 {
+            Some(_e) => todo!(),
+            None => vec![],
         }
-        result.push(to_xml_tag(token::Symbol::SemiColon));
-        result.push(close);
-        result
     }
 }
 
