@@ -1014,12 +1014,8 @@ impl DoStatement {
         (Self(subroutine_call.unwrap()), index)
     }
     fn to_string(&self) -> Vec<String> {
-        let (open, close) = get_xml_tag("doStatement".to_string());
-        let mut result = vec![open];
-        result.push(to_xml_tag(token::Keyword::Do));
-        result = [result, self.0.to_string()].concat();
-        result.push(to_xml_tag(token::Symbol::SemiColon));
-        result.push(close);
+        let mut result = self.0.to_string();
+        result.push("pop temp 0".to_string()); // do statementは返り値を無視するためpopする必要がある
         result
     }
 }
@@ -1301,31 +1297,70 @@ impl SubroutineCall {
             )
         }
     }
-    fn to_string(&self) -> Vec<String> {
-        let mut result = vec![];
-        if let Some(r) = &self.receiver {
-            result.push(r.to_string());
-            result.push(to_xml_tag(token::Symbol::Dot));
-        }
-        result.push(self.name.0.to_string());
-        result.push(to_xml_tag(token::Symbol::LeftParen));
 
-        let (open, close) = get_xml_tag("expressionList".to_string());
-        result.push(open);
-        for (index, a) in self.arguments.0.iter().enumerate() {
-            if index != 0 {
-                result.push(to_xml_tag(token::Symbol::Comma));
+    /// method: {class型の変数}.foo() || foo()
+    /// {class型の変数}はsymbol_tablesに格納されている
+    /// おそらく小文字スタート
+    /// constructor: {class名}.new
+    /// function:{大文字始まり}.foo()
+    fn which_subroutine_kind(&self) -> SubroutineDecKind {
+        match &self.receiver {
+            Some(r) => {
+                if r.to_string().chars().next().map_or(false, char::is_lowercase) {
+                    SubroutineDecKind::Method
+                } else if self.name.0 .0.as_str() == "new" {
+                    SubroutineDecKind::Constructor
+                } else {
+                    SubroutineDecKind::Function
+                }
             }
-            result = [result, a.to_string()].concat();
+            None => SubroutineDecKind::Method,
         }
-        result.push(close);
+    }
+    fn to_string(&self) -> Vec<String> {
+        match self.which_subroutine_kind() {
+            SubroutineDecKind::Constructor => todo!(),
+            SubroutineDecKind::Function => {
+                let mut result = vec![];
+                for a in &self.arguments.0 {
+                    result = [result, a.to_string()].concat();
+                }
 
-        result.push(to_xml_tag(token::Symbol::RightParen));
-        result
+                // e.g. call Foo.Bar self.arguments.len
+                result.push(format!(
+                    "call {}.{} {}",
+                    self.receiver.clone().unwrap().to_string(),
+                    self.name.0.to_string(),
+                    self.arguments.0.len()
+                ));
+                result
+            }
+            SubroutineDecKind::Method => todo!(),
+        }
+        // let mut result = vec![];
+        // if let Some(r) = &self.receiver {
+        //     result.push(r.to_string());
+        //     result.push(to_xml_tag(token::Symbol::Dot));
+        // }
+        // result.push(self.name.0.to_string());
+        // result.push(to_xml_tag(token::Symbol::LeftParen));
+        //
+        // let (open, close) = get_xml_tag("expressionList".to_string());
+        // result.push(open);
+        // for (index, a) in self.arguments.0.iter().enumerate() {
+        //     if index != 0 {
+        //         result.push(to_xml_tag(token::Symbol::Comma));
+        //     }
+        //     result = [result, a.to_string()].concat();
+        // }
+        // result.push(close);
+        //
+        // result.push(to_xml_tag(token::Symbol::RightParen));
+        // result
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Receiver {
     ClassName(ClassName),
     VarName(VarName),
@@ -1367,6 +1402,9 @@ impl ExpressionList {
 
         (Some(Self(expression_list)), index)
     }
+    // fn to_string(&self) -> Vec<String> {
+    //     self.0.iter().flat_map(|e| e.to_string()).collect()
+    // }
 }
 
 #[derive(Debug, PartialEq, Eq)]

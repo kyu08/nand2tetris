@@ -183,8 +183,9 @@ pub struct Identifier(pub String);
 impl Identifier {
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
-        let tag_name = "identifier";
-        format!("<{}> {} </{}>", tag_name, &self.0, tag_name)
+        self.0.clone()
+        // let tag_name = "identifier";
+        // format!("<{}> {} </{}>", tag_name, &self.0, tag_name)
     }
 }
 

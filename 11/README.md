@@ -9,9 +9,10 @@
     - [ ] 実装する
     - [ ] テスト
         - [ ] Seven
-            - [ ] 式をコンパイル
-            - [ ] do statementをコンパイル
+            - [x] 式をコンパイル
+            - [x] do statementをコンパイル
             - [ ] subroutineをコンパイル
+            - [ ] 不要なxmlを削除
         - [ ] ConvertToBin
         - [ ] Square
         - [ ] Average
