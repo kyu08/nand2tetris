@@ -1,10 +1,10 @@
 ## TODO
 - [x] 第10章のコードをコピー
-- [ ] シンボルテーブルに変数を加える実装
-    - [ ] 実装する
-    - [ ] コード出力時にシンボルテーブルの情報を出力する(field, static, var, arg, class, subroutine)
-    - [ ] subroutineのsymbol_tableへの追加ってなにすればいいんだっけ？
-    - [ ] symbol_tableの実装がうまく動いてそうなことを確認
+- [x] シンボルテーブルに変数を加える実装
+    - [x] 実装する
+    - [x] コード出力時にシンボルテーブルの情報を出力する(field, static, var, arg, class, subroutine)
+    - [x] subroutineってsymbol_tableに追加する必要はあるんだっけ？ -> なさそうなのでひとまずスルー
+    - [x] symbol_tableの実装がうまく動いてそうなことを確認
 - [ ] コード生成の実装
     - [ ] 実装する
     - [ ] テスト

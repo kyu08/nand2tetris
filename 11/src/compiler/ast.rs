@@ -6,6 +6,7 @@ pub struct Ast {
 
 #[derive(Clone)]
 struct SymbolTables {
+    // kindごとにVecにSymbolを格納したほうがパフォーマンスはよさそうではある
     class_scope: std::collections::HashMap<String, ClassSymbol>,
     subroutine_scope: std::collections::HashMap<String, SubroutineSymbol>,
 }
