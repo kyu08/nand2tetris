@@ -166,8 +166,7 @@ pub struct IntegerConstant(pub u32);
 impl IntegerConstant {
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
-        let (open, close) = get_xml_tag("integerConstant".to_string());
-        format!("{} {} {}", open, self.0, close)
+        format!("push {}", self.0)
     }
 }
 #[derive(Debug, PartialEq, Eq, Clone)]

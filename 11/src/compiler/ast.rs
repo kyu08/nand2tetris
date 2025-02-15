@@ -1058,7 +1058,6 @@ impl ReturnStatement {
  */
 #[derive(Debug, PartialEq, Eq)]
 struct Expression {
-    // 再帰参照になってしまうのでBoxでくるんでいる
     term: Box<Term>,
     op_term: Vec<(Op, Term)>,
 }
@@ -1087,16 +1086,12 @@ impl Expression {
         )
     }
     fn to_string(&self) -> Vec<String> {
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("expression".to_string());
-        result.push(open);
-        result = [result, self.term.to_string()].concat();
+        let mut result = self.term.to_string();
         for o in &self.op_term {
-            result.push(o.0.to_string());
             result = [result, o.1.to_string()].concat();
+            result.push(o.0.to_string());
         }
 
-        result.push(close);
         result
     }
 }
@@ -1184,11 +1179,7 @@ impl Term {
         }
     }
     fn to_string(&self) -> Vec<String> {
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("term".to_string());
-        result.push(open);
-
-        let content = match self {
+        match self {
             Term::IntegerConstant(s) => vec![s.to_string()],
             Term::StringConstant(s) => vec![s.to_string()],
             Term::KeyWordConstant(s) => vec![s.to_string()],
@@ -1200,23 +1191,14 @@ impl Term {
                 result.push(to_xml_tag(token::Symbol::RightBracket));
                 result
             }
-            Term::Expression(s) => {
-                let mut result = vec![to_xml_tag(token::Symbol::LeftParen)];
-                result = [result, s.to_string()].concat();
-                result.push(to_xml_tag(token::Symbol::RightParen));
-                result
-            }
+            Term::Expression(s) => s.to_string(),
             Term::UnaryOp(u, t) => {
                 let mut result = vec![u.to_string()];
                 result = [result, t.to_string()].concat();
                 result
             }
             Term::SubroutineCall(s) => s.to_string(),
-        };
-        result = [result, content].concat();
-
-        result.push(close);
-        result
+        }
     }
 }
 
@@ -1416,19 +1398,17 @@ impl Op {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
-        let content = match self {
-            Op::Plus => "+".to_string(),
-            Op::Minus => "-".to_string(),
-            Op::Multiply => "*".to_string(),
-            Op::Div => "/".to_string(),
-            Op::Ampersand => "&amp;".to_string(),
-            Op::Pipe => "|".to_string(),
-            Op::LessThan => "&lt;".to_string(),
-            Op::MoreThan => "&gt;".to_string(),
+        match self {
+            Op::Plus => "add".to_string(),
+            Op::Minus => "sub".to_string(),
+            Op::Multiply => "call Math.multiply 2".to_string(),
+            Op::Div => "call Math.Divide 2".to_string(),
+            Op::Ampersand => "and".to_string(),
+            Op::Pipe => "or".to_string(),
+            Op::LessThan => "<".to_string(),
+            Op::MoreThan => ">".to_string(),
             Op::Equal => "=".to_string(),
-        };
-        let (open, close) = get_xml_tag("symbol".to_string());
-        format!("{} {} {}", open, content, close)
+        }
     }
 }
 

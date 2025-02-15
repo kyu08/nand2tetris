@@ -9,6 +9,9 @@
     - [ ] 実装する
     - [ ] テスト
         - [ ] Seven
+            - [ ] 式をコンパイル
+            - [ ] do statementをコンパイル
+            - [ ] subroutineをコンパイル
         - [ ] ConvertToBin
         - [ ] Square
         - [ ] Average
