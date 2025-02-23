@@ -4,7 +4,7 @@ pub struct Ast {
     class: Class,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct SymbolTables {
     // kindごとにVecにSymbolを格納したほうがパフォーマンスはよさそうではある
     class_scope: std::collections::HashMap<String, ClassSymbol>,
@@ -66,12 +66,23 @@ impl SymbolTables {
         st.subroutine_scope = std::collections::HashMap::new();
         st
     }
+    fn get(&self, var_name: String) -> Symbol {
+        if let Some(s) = self.subroutine_scope.get(&var_name) {
+            Symbol::Subroutine(s.clone())
+        } else if let Some(s) = self.class_scope.get(&var_name) {
+            Symbol::Class(s.clone())
+        } else {
+            panic!("{:?}", 1);
+        }
+    }
+    #[allow(dead_code)]
     fn debug_class_symbol_table(&self) {
         println!("class_scope:");
         for v in self.class_scope.values() {
             println!("\t{:?} {:?} {} #{}", v.symbol_type, v.type_, v.name, v.index);
         }
     }
+    #[allow(dead_code)]
     fn debug_subroutine_symbol_table(&self, subroutine_name: String) {
         println!("subroutine_scope({}):", subroutine_name);
         for v in self.subroutine_scope.values() {
@@ -83,7 +94,7 @@ impl SymbolTables {
 // symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
 // 不適切な共通化な気がしたのでしていない。(共通化が)必要になったらそのときに検討する。
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct ClassSymbol {
     name: String,
     type_: Type,
@@ -95,8 +106,17 @@ enum ClassSymbolType {
     Static,
     Field,
 }
+impl ClassSymbolType {
+    fn to_segment_name(&self) -> String {
+        match self {
+            ClassSymbolType::Static => "static",
+            ClassSymbolType::Field => "this",
+        }
+        .to_string()
+    }
+}
 #[allow(dead_code)]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 struct SubroutineSymbol {
     name: String,
     type_: Type,
@@ -110,12 +130,38 @@ enum SubroutineSymbolType {
     Arg,
     Subroutine,
 }
+impl SubroutineSymbolType {
+    fn to_segment_name(&self) -> String {
+        match self {
+            SubroutineSymbolType::Var => "local",
+            SubroutineSymbolType::Arg => "arg",
+            SubroutineSymbolType::Subroutine => todo!(),
+        }
+        .to_string()
+    }
+}
+
+enum Symbol {
+    Class(ClassSymbol),
+    Subroutine(SubroutineSymbol),
+}
+impl Symbol {
+    fn push(&self) -> String {
+        match self {
+            Symbol::Class(s) => {
+                format!("push {} {}", s.symbol_type.to_segment_name(), s.index)
+            }
+            Symbol::Subroutine(s) => {
+                format!("push {} {}", s.symbol_type.to_segment_name(), s.index)
+            }
+        }
+    }
+}
 
 impl Ast {
     pub fn new(tokens: Vec<token::Token>) -> Self {
-        let symbol_tables = SymbolTables::default();
         let class = match tokens.first() {
-            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0, symbol_tables) {
+            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0) {
                 Some(class) => class,
                 _ => panic!("{}", invalid_token(&tokens, 1)),
             },
@@ -127,7 +173,7 @@ impl Ast {
     }
 
     pub fn to_xml(&self) -> String {
-        self.class.to_string().join("\n")
+        self.class.to_string(&self.class.symbol_tables).join("\n")
     }
 }
 
@@ -150,10 +196,12 @@ struct Class {
     name: ClassName,
     var_dec: Vec<ClassVarDec>,
     subroutine_dec: Vec<SubroutineDec>,
+    symbol_tables: SymbolTables,
 }
 impl Class {
     // parse結果を返す。ひとまずindexは返さない
-    fn new(tokens: &[token::Token], index: usize, symbol_tables: SymbolTables) -> Option<Self> {
+    fn new(tokens: &[token::Token], index: usize) -> Option<Self> {
+        let symbol_tables = SymbolTables::default();
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Class)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, 0)),
@@ -183,15 +231,16 @@ impl Class {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
 
-        symbol_tables.debug_class_symbol_table();
+        // symbol_tables.debug_class_symbol_table();
         Some(Class {
             name,
             var_dec,
             subroutine_dec,
+            symbol_tables,
         })
     }
 
-    pub fn to_string(&self) -> Vec<String> {
+    pub fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         // let (class_open, class_close) = get_xml_tag("class".to_string());
         // result.push(class_open);
@@ -199,10 +248,10 @@ impl Class {
         // result.push(self.name.0.to_string());
         // result.push(to_xml_tag(token::Symbol::LeftBrace));
         for var_dec in &self.var_dec {
-            result = [result, var_dec.to_string()].concat();
+            result = [result, var_dec.to_string(&self.symbol_tables)].concat();
         }
         for subroutine in &self.subroutine_dec {
-            result = [result, subroutine.to_string(&self.name)].concat();
+            result = [result, subroutine.to_string(&self.name, symbol_tables)].concat();
         }
 
         // result.push(to_xml_tag(token::Symbol::RightBrace));
@@ -295,7 +344,7 @@ impl ClassVarDec {
         (class_var_decs, index, symbol_tables)
     }
 
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         let (open, close) = get_xml_tag("classVarDec".to_string());
         result.push(open);
@@ -305,7 +354,7 @@ impl ClassVarDec {
             if index != 0 {
                 result.push(to_xml_tag(token::Symbol::Comma));
             }
-            result.push(n.to_string());
+            result.push(n.to_string(symbol_tables));
         }
         if !&self.var_names.is_empty() {
             result.push(to_xml_tag(token::Symbol::SemiColon));
@@ -406,7 +455,7 @@ impl SubroutineDec {
         };
         let (body, index, symbol_tables) = SubroutineBody::new(tokens, index, class_name, symbol_tables);
 
-        symbol_tables.debug_subroutine_symbol_table(subroutine_name.clone().0);
+        // symbol_tables.debug_subroutine_symbol_table(subroutine_name.clone().0);
 
         (
             Some(Self {
@@ -420,7 +469,7 @@ impl SubroutineDec {
             symbol_tables,
         )
     }
-    fn to_string(&self, class_name: &ClassName) -> Vec<String> {
+    fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![format!(
             "function {}.{} {}",
             class_name.0.to_string(),
@@ -436,7 +485,7 @@ impl SubroutineDec {
         // result.push(to_xml_tag(token::Symbol::LeftParen));
         // result = [result, self.parameter_list.to_string()].concat();
         // result.push(to_xml_tag(token::Symbol::RightParen));
-        result = [result, self.body.to_string()].concat();
+        result = [result, self.body.to_string(symbol_tables)].concat();
         // result.push(close);
         result
     }
@@ -526,7 +575,7 @@ impl ParameterList {
         (Self(param_list), index, symbol_tables)
     }
     #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         let (open, close) = get_xml_tag("parameterList".to_string());
         result.push(open);
@@ -535,7 +584,7 @@ impl ParameterList {
                 result.push(to_xml_tag(token::Symbol::Comma));
             }
             result.push(p.0.to_string());
-            result.push(p.1.to_string());
+            result.push(p.1.to_string(symbol_tables));
         }
         result.push(close);
         result
@@ -579,19 +628,19 @@ impl SubroutineBody {
         (Self { var_dec, statements }, index, symbol_tables)
     }
     #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         // let (open, close) = get_xml_tag("subroutineBody".to_string());
         // result.push(open);
         // result.push(to_xml_tag(token::Symbol::LeftBrace));
         for v in &self.var_dec {
-            result = [result, v.to_string()].concat();
+            result = [result, v.to_string(symbol_tables)].concat();
         }
         if !&self.statements.0.is_empty() {
             // let (open, close) = get_xml_tag("statements".to_string());
             // result.push(open);
             for s in &self.statements.0 {
-                result = [result, s.to_string()].concat();
+                result = [result, s.to_string(symbol_tables)].concat();
             }
             // result.push(close);
         }
@@ -657,7 +706,7 @@ impl VarDec {
 
         (Some(Self { type_, var_name }), index, symbol_tables)
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         let (open, close) = get_xml_tag("varDec".to_string());
         result.push(open);
@@ -667,7 +716,7 @@ impl VarDec {
             if index != 0 {
                 result.push(to_xml_tag(token::Symbol::Comma));
             }
-            result.push(n.to_string());
+            result.push(n.to_string(symbol_tables));
         }
         if !&self.var_name.is_empty() {
             result.push(to_xml_tag(token::Symbol::SemiColon));
@@ -696,8 +745,9 @@ struct SubroutineName(token::Identifier);
 struct VarName(token::Identifier);
 impl VarName {
     #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        self.0.to_string()
+    fn to_string(&self, symbol_tables: &SymbolTables) -> String {
+        let symbol = symbol_tables.get(self.0 .0.clone());
+        symbol.push()
     }
 }
 
@@ -753,13 +803,13 @@ impl Statement {
             _ => (None, index),
         }
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match self {
-            Statement::Let(s) => s.to_string(),
-            Statement::If(s) => s.to_string(),
-            Statement::While(s) => s.to_string(),
-            Statement::Do(s) => s.to_string(),
-            Statement::Return(s) => s.to_string(),
+            Statement::Let(s) => s.to_string(symbol_tables),
+            Statement::If(s) => s.to_string(symbol_tables),
+            Statement::While(s) => s.to_string(symbol_tables),
+            Statement::Do(s) => s.to_string(symbol_tables),
+            Statement::Return(s) => s.to_string(symbol_tables),
         }
     }
 }
@@ -817,21 +867,23 @@ impl LetStatement {
             index,
         )
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!();
+
         let (open, close) = get_xml_tag("letStatement".to_string());
         let mut result = vec![open];
         result.push(to_xml_tag(token::Keyword::Let));
-        result.push(self.var_name.to_string());
+        result.push(self.var_name.to_string(symbol_tables));
 
         // index
         if let Some(a) = &self.array_index {
             result.push(to_xml_tag(token::Symbol::LeftBracket));
-            result = [result, a.to_string()].concat();
+            result = [result, a.to_string(symbol_tables)].concat();
             result.push(to_xml_tag(token::Symbol::RightBracket));
         }
 
         result.push(to_xml_tag(token::Symbol::Equal));
-        result = [result, self.right_hand_side.to_string()].concat();
+        result = [result, self.right_hand_side.to_string(symbol_tables)].concat();
         result.push(to_xml_tag(token::Symbol::SemiColon));
         result.push(close);
         result
@@ -907,19 +959,20 @@ impl IfStatement {
             ),
         }
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!();
         let (open, close) = get_xml_tag("ifStatement".to_string());
         let mut result = vec![open];
         result.push(to_xml_tag(token::Keyword::If));
         result.push(to_xml_tag(token::Symbol::LeftParen));
-        result = [result, self.condition.to_string()].concat();
+        result = [result, self.condition.to_string(symbol_tables)].concat();
         result.push(to_xml_tag(token::Symbol::RightParen));
         result.push(to_xml_tag(token::Symbol::LeftBrace));
 
         let (statement_open, statement_close) = get_xml_tag("statements".to_string());
         result.push(statement_open);
         for p in &self.positive_case_body.0 {
-            result = [result, p.to_string()].concat();
+            result = [result, p.to_string(symbol_tables)].concat();
         }
         result.push(statement_close);
         result.push(to_xml_tag(token::Symbol::RightBrace));
@@ -933,7 +986,7 @@ impl IfStatement {
                 let (statement_open, statement_close) = get_xml_tag("statements".to_string());
                 result.push(statement_open);
                 for n in &n_.0 {
-                    result = [result, n.to_string()].concat();
+                    result = [result, n.to_string(symbol_tables)].concat();
                 }
                 result.push(statement_close);
                 result.push(to_xml_tag(token::Symbol::RightBrace));
@@ -982,19 +1035,20 @@ impl WhileStatement {
 
         (Self { condition, body }, index)
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!();
         let (open, close) = get_xml_tag("whileStatement".to_string());
         let mut result = vec![open];
         result.push(to_xml_tag(token::Keyword::While));
         result.push(to_xml_tag(token::Symbol::LeftParen));
-        result = [result, self.condition.to_string()].concat();
+        result = [result, self.condition.to_string(symbol_tables)].concat();
         result.push(to_xml_tag(token::Symbol::RightParen));
         result.push(to_xml_tag(token::Symbol::LeftBrace));
 
         let (statement_open, statement_close) = get_xml_tag("statements".to_string());
         result.push(statement_open);
         for p in &self.body.0 {
-            result = [result, p.to_string()].concat();
+            result = [result, p.to_string(symbol_tables)].concat();
         }
         result.push(statement_close);
         result.push(to_xml_tag(token::Symbol::RightBrace));
@@ -1019,8 +1073,8 @@ impl DoStatement {
 
         (Self(subroutine_call.unwrap()), index)
     }
-    fn to_string(&self) -> Vec<String> {
-        let mut result = self.0.to_string();
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        let mut result = self.0.to_string(symbol_tables);
         result.push("pop temp 0".to_string()); // do statementは返り値を無視するためpopする必要がある
         result
     }
@@ -1042,9 +1096,15 @@ impl ReturnStatement {
 
         (Self(expression), index)
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match &self.0 {
-            Some(_e) => todo!(),
+            Some(e) => {
+                let mut result = e.to_string(symbol_tables);
+                if !result.is_empty() {
+                    result.push("return".to_string());
+                }
+                result
+            }
             None => vec![],
         }
     }
@@ -1082,10 +1142,10 @@ impl Expression {
             index,
         )
     }
-    fn to_string(&self) -> Vec<String> {
-        let mut result = self.term.to_string();
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        let mut result = self.term.to_string(symbol_tables);
         for o in &self.op_term {
-            result = [result, o.1.to_string()].concat();
+            result = [result, o.1.to_string(symbol_tables)].concat();
             result.push(o.0.to_string());
         }
 
@@ -1175,26 +1235,27 @@ impl Term {
             }
         }
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match self {
             Term::IntegerConstant(s) => vec![s.to_string()],
-            Term::StringConstant(s) => vec![s.to_string()],
-            Term::KeyWordConstant(s) => vec![s.to_string()],
-            Term::VarName(s) => vec![s.to_string()],
+            Term::StringConstant(s) => vec![s.to_string(), todo!()],
+            Term::KeyWordConstant(s) => vec![s.to_string(), todo!()],
+            Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {
-                let mut result = vec![v.to_string()];
+                let mut result = vec![v.to_string(symbol_tables)];
                 result.push(to_xml_tag(token::Symbol::LeftBracket));
-                result = [result, e.to_string()].concat();
+                result = [result, e.to_string(symbol_tables)].concat();
                 result.push(to_xml_tag(token::Symbol::RightBracket));
+                todo!();
                 result
             }
-            Term::Expression(s) => s.to_string(),
+            Term::Expression(s) => s.to_string(symbol_tables),
             Term::UnaryOp(u, t) => {
-                let mut result = vec![u.to_string()];
-                result = [result, t.to_string()].concat();
+                let mut result = t.to_string(symbol_tables);
+                result.push(u.to_string());
                 result
             }
-            Term::SubroutineCall(s) => s.to_string(),
+            Term::SubroutineCall(s) => s.to_string(symbol_tables),
         }
     }
 }
@@ -1318,13 +1379,13 @@ impl SubroutineCall {
             None => SubroutineDecKind::Method,
         }
     }
-    fn to_string(&self) -> Vec<String> {
+    fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match self.which_subroutine_kind() {
             SubroutineDecKind::Constructor => todo!(),
             SubroutineDecKind::Function => {
                 let mut result = vec![];
                 for a in &self.arguments.0 {
-                    result = [result, a.to_string()].concat();
+                    result = [result, a.to_string(symbol_tables)].concat();
                 }
 
                 // e.g. call Foo.Bar self.arguments.len
@@ -1466,12 +1527,11 @@ impl UnaryOp {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
-        let content = match self {
-            UnaryOp::Minus => "-",
-            UnaryOp::Tilde => "~",
-        };
-        let (open, close) = get_xml_tag("symbol".to_string());
-        format!("{} {} {}", open, content, close)
+        match self {
+            UnaryOp::Minus => "neg",
+            UnaryOp::Tilde => "not",
+        }
+        .to_string()
     }
 }
 
@@ -1590,7 +1650,6 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
             0,
-            SymbolTables::default(),
         );
         let expected = Some(Class {
             name: ClassName(token::Identifier("SquareGame".to_string())),
@@ -1664,6 +1723,31 @@ mod test {
                     },
                 },
             ],
+            symbol_tables: SymbolTables {
+                class_scope: {
+                    let mut map = std::collections::HashMap::new();
+                    map.insert(
+                        "square".to_string(),
+                        ClassSymbol {
+                            name: "square".to_string(),
+                            type_: Type::ClassName("Square".to_string()),
+                            symbol_type: ClassSymbolType::Field,
+                            index: 0,
+                        },
+                    );
+                    map.insert(
+                        "direction".to_string(),
+                        ClassSymbol {
+                            name: "direction".to_string(),
+                            type_: Type::Int,
+                            symbol_type: ClassSymbolType::Field,
+                            index: 1,
+                        },
+                    );
+                    map
+                },
+                subroutine_scope: std::collections::HashMap::new(),
+            },
         });
         assert_eq!(input, expected);
     }
