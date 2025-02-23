@@ -8,13 +8,19 @@ pub struct Ast {
 struct SymbolTables {
     // kindごとにVecにSymbolを格納したほうがパフォーマンスはよさそうではある
     class_scope: std::collections::HashMap<String, ClassSymbol>,
-    subroutine_scope: std::collections::HashMap<String, SubroutineSymbol>,
+    // key: subroutine_name, value: そのsubroutineのsymbol_table
+    subroutine_scopes: std::collections::HashMap<String, std::collections::HashMap<String, SubroutineSymbol>>,
+    // currentに現在処理中のsubroutine名
+    // コンパイラフロントエンドで生成したsymbol_tableを参照するために保持している。
+    // 関数に{現在処理中のsubroutine_name}を引き回す方法もなくはないが複雑になりそうだったので意図的にこうしている。
+    current_subroutine_name: Option<String>,
 }
 impl SymbolTables {
     fn default() -> Self {
         Self {
             class_scope: std::collections::HashMap::new(),
-            subroutine_scope: std::collections::HashMap::new(),
+            subroutine_scopes: std::collections::HashMap::new(),
+            current_subroutine_name: None,
         }
     }
     fn determine_next_item_index_class(&self, symbol_type: &ClassSymbolType) -> usize {
@@ -27,9 +33,14 @@ impl SymbolTables {
 
         next_item_index
     }
-    fn determine_next_item_index_subroutine(&self, symbol_type: &SubroutineSymbolType) -> usize {
+    fn determine_next_item_index_subroutine(
+        &self,
+        subroutine_name: &String,
+        symbol_type: &SubroutineSymbolType,
+    ) -> usize {
         let mut next_item_index = 0;
-        for v in self.subroutine_scope.values() {
+        // この時点ではまだsymbol_tableが存在しない可能性がある
+        for v in self.subroutine_scopes.get(subroutine_name).unwrap().values() {
             if v.symbol_type == *symbol_type {
                 next_item_index += 1;
             }
@@ -50,7 +61,8 @@ impl SymbolTables {
         st
     }
     fn append_subroutine_symbol(&self, name: String, type_: Type, symbol_type: SubroutineSymbolType) -> Self {
-        let index = self.determine_next_item_index_subroutine(&symbol_type);
+        let current_subroutine_name = self.current_subroutine_name.clone().unwrap();
+        let index = self.determine_next_item_index_subroutine(&current_subroutine_name, &symbol_type);
         let sym = SubroutineSymbol {
             name: name.clone(),
             type_,
@@ -58,21 +70,37 @@ impl SymbolTables {
             index,
         };
         let mut st = self.clone();
-        let _ = st.subroutine_scope.insert(name, sym);
+        let _ = st
+            .subroutine_scopes
+            .get_mut(&current_subroutine_name)
+            .unwrap()
+            .insert(name, sym);
         st
     }
-    fn refresh_subroutine_symbol(&self) -> Self {
+    fn add_subroutine_symbol_table(&self, subroutine_name: String) -> Self {
         let mut st = self.clone();
-        st.subroutine_scope = std::collections::HashMap::new();
+        st.subroutine_scopes
+            .insert(subroutine_name.clone(), std::collections::HashMap::default());
+        st.current_subroutine_name = Some(subroutine_name);
+        st
+    }
+    fn update_current_subroutine_name(&self, subroutine_name: String) -> Self {
+        let mut st = self.clone();
+        st.current_subroutine_name = Some(subroutine_name);
         st
     }
     fn get(&self, var_name: String) -> Symbol {
-        if let Some(s) = self.subroutine_scope.get(&var_name) {
+        if let Some(s) = self
+            .subroutine_scopes
+            .get(&self.current_subroutine_name.clone().unwrap())
+            .unwrap()
+            .get(&var_name)
+        {
             Symbol::Subroutine(s.clone())
         } else if let Some(s) = self.class_scope.get(&var_name) {
             Symbol::Class(s.clone())
         } else {
-            panic!("{:?}", 1);
+            panic!("{:?} not found in {:?}", var_name, self);
         }
     }
     #[allow(dead_code)]
@@ -85,7 +113,12 @@ impl SymbolTables {
     #[allow(dead_code)]
     fn debug_subroutine_symbol_table(&self, subroutine_name: String) {
         println!("subroutine_scope({}):", subroutine_name);
-        for v in self.subroutine_scope.values() {
+        for v in self
+            .subroutine_scopes
+            .get(&self.current_subroutine_name.clone().unwrap())
+            .unwrap()
+            .values()
+        {
             println!("\t{:?} {:?} {} #{}", v.symbol_type, v.type_, v.name, v.index);
         }
     }
@@ -93,7 +126,6 @@ impl SymbolTables {
 
 // symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
 // 不適切な共通化な気がしたのでしていない。(共通化が)必要になったらそのときに検討する。
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct ClassSymbol {
     name: String,
@@ -115,7 +147,6 @@ impl ClassSymbolType {
         .to_string()
     }
 }
-#[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct SubroutineSymbol {
     name: String,
@@ -439,8 +470,6 @@ impl SubroutineDec {
         class_name: &ClassName,
         symbol_tables: SymbolTables,
     ) -> (Option<Self>, usize, SymbolTables) {
-        let symbol_tables = symbol_tables.refresh_subroutine_symbol();
-
         let (kind, index) = match SubroutineDecKind::new(tokens, index) {
             (Some(k), i) => (k, i),
             _ => return (None, index, symbol_tables),
@@ -450,6 +479,8 @@ impl SubroutineDec {
             Some(token::Token::Identifier(i)) => (i.clone(), index + 1),
             _ => panic!("{}", invalid_token(tokens, index)),
         };
+        let symbol_tables = symbol_tables.add_subroutine_symbol_table(subroutine_name.0.clone());
+
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
@@ -460,8 +491,6 @@ impl SubroutineDec {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
         let (body, index, symbol_tables) = SubroutineBody::new(tokens, index, class_name, symbol_tables);
-
-        // symbol_tables.debug_subroutine_symbol_table(subroutine_name.clone().0);
 
         (
             Some(Self {
@@ -476,6 +505,7 @@ impl SubroutineDec {
         )
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
+        let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
         let mut result = vec![format!(
             "function {}.{} {}",
             class_name.0.to_string(),
@@ -483,16 +513,7 @@ impl SubroutineDec {
             self.parameter_list.0.len()
         )];
 
-        // let (open, close) = get_xml_tag("subroutineDec".to_string());
-        // result.push(open);
-        // result.push(self.kind.to_string());
-        // result.push(self.type_.to_string());
-        // result.push(self.subroutine_name.to_string());
-        // result.push(to_xml_tag(token::Symbol::LeftParen));
-        // result = [result, self.parameter_list.to_string()].concat();
-        // result.push(to_xml_tag(token::Symbol::RightParen));
-        result = [result, self.body.to_string(symbol_tables)].concat();
-        // result.push(close);
+        result = [result, self.body.to_string(&symbol_tables)].concat();
         result
     }
 }
@@ -1757,7 +1778,8 @@ mod test {
                     );
                     map
                 },
-                subroutine_scope: std::collections::HashMap::new(),
+                subroutine_scopes: std::collections::HashMap::new(),
+                current_subroutine_name: None,
             },
         });
         assert_eq!(input, expected);
