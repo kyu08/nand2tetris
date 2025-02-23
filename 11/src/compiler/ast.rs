@@ -146,15 +146,21 @@ enum Symbol {
     Subroutine(SubroutineSymbol),
 }
 impl Symbol {
-    fn push(&self) -> String {
+    fn to_vm(&self) -> String {
         match self {
             Symbol::Class(s) => {
-                format!("push {} {}", s.symbol_type.to_segment_name(), s.index)
+                format!("{} {}", s.symbol_type.to_segment_name(), s.index)
             }
             Symbol::Subroutine(s) => {
-                format!("push {} {}", s.symbol_type.to_segment_name(), s.index)
+                format!("{} {}", s.symbol_type.to_segment_name(), s.index)
             }
         }
+    }
+    fn push(&self) -> String {
+        format!("push {}", self.to_vm())
+    }
+    fn pop(&self) -> String {
+        format!("pop {}", self.to_vm())
     }
 }
 
@@ -868,25 +874,30 @@ impl LetStatement {
         )
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        todo!();
+        let right = self.right_hand_side.to_string(symbol_tables);
+        let mut result = right;
 
-        let (open, close) = get_xml_tag("letStatement".to_string());
-        let mut result = vec![open];
-        result.push(to_xml_tag(token::Keyword::Let));
-        result.push(self.var_name.to_string(symbol_tables));
-
-        // index
-        if let Some(a) = &self.array_index {
-            result.push(to_xml_tag(token::Symbol::LeftBracket));
-            result = [result, a.to_string(symbol_tables)].concat();
-            result.push(to_xml_tag(token::Symbol::RightBracket));
-        }
-
-        result.push(to_xml_tag(token::Symbol::Equal));
-        result = [result, self.right_hand_side.to_string(symbol_tables)].concat();
-        result.push(to_xml_tag(token::Symbol::SemiColon));
-        result.push(close);
+        let left = symbol_tables.get(self.var_name.0 .0.clone());
+        result.push(left.pop());
         result
+
+        // let (open, close) = get_xml_tag("letStatement".to_string());
+        // let mut result = vec![open];
+        // result.push(to_xml_tag(token::Keyword::Let));
+        // result.push(self.var_name.to_string(symbol_tables));
+        //
+        // // index
+        // if let Some(a) = &self.array_index {
+        //     result.push(to_xml_tag(token::Symbol::LeftBracket));
+        //     result = [result, a.to_string(symbol_tables)].concat();
+        //     result.push(to_xml_tag(token::Symbol::RightBracket));
+        // }
+        //
+        // result.push(to_xml_tag(token::Symbol::Equal));
+        // result = [result, self.right_hand_side.to_string(symbol_tables)].concat();
+        // result.push(to_xml_tag(token::Symbol::SemiColon));
+        // result.push(close);
+        // result
     }
 }
 

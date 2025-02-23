@@ -1,3 +1,3 @@
 return {
-	args = { "test_data/Seven/Main.jack" },
+	args = { "test_data/ConvertToBin/Main.jack" },
 }
