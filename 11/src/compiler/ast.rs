@@ -1271,7 +1271,7 @@ impl Term {
         match self {
             Term::IntegerConstant(s) => vec![s.to_string()],
             Term::StringConstant(s) => vec![s.to_string(), todo!()],
-            Term::KeyWordConstant(s) => vec![s.to_string(), todo!()],
+            Term::KeyWordConstant(s) => s.to_string(),
             Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {
                 let mut result = vec![v.to_string(symbol_tables)];
@@ -1301,16 +1301,16 @@ enum KeyWordConstant {
 }
 impl KeyWordConstant {
     #[allow(clippy::inherent_to_string)]
-    fn to_string(&self) -> String {
-        let (open, close) = get_xml_tag("keyword".to_string());
-        let content = match self {
-            KeyWordConstant::True => "true".to_string(),
-            KeyWordConstant::False => "false".to_string(),
-            KeyWordConstant::Null => "null".to_string(),
-            KeyWordConstant::This => "this".to_string(),
-        };
-
-        format!("{} {} {}", open, content, close)
+    fn to_string(&self) -> Vec<String> {
+        match self {
+            KeyWordConstant::True => vec!["push constant 1", "neg"],
+            KeyWordConstant::False => vec!["push constant 0"],
+            KeyWordConstant::Null => vec!["push constant 0"],
+            KeyWordConstant::This => vec!["push pointer 0"],
+        }
+        .into_iter()
+        .map(|e| e.to_string())
+        .collect()
     }
 }
 
