@@ -1015,7 +1015,7 @@ impl IfStatement {
                 gen_random_6_characters_str()
             );
 
-            (format!("{}_if-start", label_base), format!("{}_if-end", label_base))
+            (format!("{}_if_start", label_base), format!("{}_if_end", label_base))
         };
 
         let mut result = self.condition.to_string(symbol_tables);
@@ -1082,7 +1082,7 @@ impl WhileStatement {
                 gen_random_6_characters_str()
             );
 
-            (format!("{}_while-start", label_base), format!("{}_while-end", label_base))
+            (format!("{}_while_start", label_base), format!("{}_while_end", label_base))
         };
 
         let mut result = vec![format!("label {}", start_label_name)];
