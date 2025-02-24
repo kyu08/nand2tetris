@@ -169,7 +169,7 @@ impl SubroutineSymbolType {
     fn to_segment_name(&self) -> String {
         match self {
             SubroutineSymbolType::Var => "local",
-            SubroutineSymbolType::Arg => "arg",
+            SubroutineSymbolType::Arg => "argument",
             SubroutineSymbolType::Subroutine => todo!(),
         }
         .to_string()
@@ -386,6 +386,7 @@ impl ClassVarDec {
     }
 
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!();
         let mut result = vec![];
         let (open, close) = get_xml_tag("classVarDec".to_string());
         result.push(open);
@@ -414,6 +415,7 @@ enum ClassVarKind {
 impl ClassVarKind {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
+        todo!();
         let (open, close) = get_xml_tag("keyword".to_string());
         format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
@@ -446,8 +448,10 @@ impl Type {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
+        todo!();
         match self {
             Type::ClassName(c) => {
+                todo!();
                 let (open, close) = get_xml_tag("identifier".to_string());
                 format!("{} {} {}", open, c, close)
             }
@@ -539,6 +543,7 @@ impl SubroutineDecKind {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
+        todo!();
         let (open, close) = get_xml_tag("keyword".to_string());
         format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
@@ -561,6 +566,7 @@ impl SubroutineDecType {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
+        todo!();
         match self {
             SubroutineDecType::Void => {
                 let (open, close) = get_xml_tag("keyword".to_string());
@@ -607,6 +613,7 @@ impl ParameterList {
     }
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!();
         let mut result = vec![];
         let (open, close) = get_xml_tag("parameterList".to_string());
         result.push(open);
@@ -661,22 +668,14 @@ impl SubroutineBody {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
-        // let (open, close) = get_xml_tag("subroutineBody".to_string());
-        // result.push(open);
-        // result.push(to_xml_tag(token::Symbol::LeftBrace));
-        for v in &self.var_dec {
-            result = [result, v.to_string(symbol_tables)].concat();
-        }
+        // for v in &self.var_dec {
+        //     result = [result, v.to_string(symbol_tables)].concat();
+        // }
         if !&self.statements.0.is_empty() {
-            // let (open, close) = get_xml_tag("statements".to_string());
-            // result.push(open);
             for s in &self.statements.0 {
                 result = [result, s.to_string(symbol_tables)].concat();
             }
-            // result.push(close);
         }
-        // result.push(to_xml_tag(token::Symbol::RightBrace));
-        // result.push(close);
         result
     }
 }
@@ -738,6 +737,7 @@ impl VarDec {
         (Some(Self { type_, var_name }), index, symbol_tables)
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        todo!("実装は不要だと思うが念の為残している");
         let mut result = vec![];
         let (open, close) = get_xml_tag("varDec".to_string());
         result.push(open);
@@ -1549,9 +1549,9 @@ impl Op {
             Op::Div => "call Math.Divide 2".to_string(),
             Op::Ampersand => "and".to_string(),
             Op::Pipe => "or".to_string(),
-            Op::LessThan => "<".to_string(),
-            Op::MoreThan => ">".to_string(),
-            Op::Equal => "=".to_string(),
+            Op::LessThan => "lt".to_string(),
+            Op::MoreThan => "gt".to_string(),
+            Op::Equal => "eq".to_string(),
         }
     }
 }
