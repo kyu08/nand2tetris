@@ -1,4 +1,5 @@
 use crate::analyzer::token;
+use rand::seq::SliceRandom;
 
 pub struct Ast {
     class: Class,
@@ -14,13 +15,16 @@ struct SymbolTables {
     // コンパイラフロントエンドで生成したsymbol_tableを参照するために保持している。
     // 関数に{現在処理中のsubroutine_name}を引き回す方法もなくはないが複雑になりそうだったので意図的にこうしている。
     current_subroutine_name: Option<String>,
+    // 一意のラベルを生成するために必要
+    file_name: String,
 }
 impl SymbolTables {
-    fn default() -> Self {
+    fn default(file_name: String) -> Self {
         Self {
             class_scope: std::collections::HashMap::new(),
             subroutine_scopes: std::collections::HashMap::new(),
             current_subroutine_name: None,
+            file_name,
         }
     }
     fn determine_next_item_index_class(&self, symbol_type: &ClassSymbolType) -> usize {
@@ -196,9 +200,9 @@ impl Symbol {
 }
 
 impl Ast {
-    pub fn new(tokens: Vec<token::Token>) -> Self {
+    pub fn new(tokens: Vec<token::Token>, file_name: String) -> Self {
         let class = match tokens.first() {
-            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, 0) {
+            Some(token::Token::Key(token::Keyword::Class)) => match Class::new(&tokens, file_name, 0) {
                 Some(class) => class,
                 _ => panic!("{}", invalid_token(&tokens, 1)),
             },
@@ -237,8 +241,8 @@ struct Class {
 }
 impl Class {
     // parse結果を返す。ひとまずindexは返さない
-    fn new(tokens: &[token::Token], index: usize) -> Option<Self> {
-        let symbol_tables = SymbolTables::default();
+    fn new(tokens: &[token::Token], file_name: String, index: usize) -> Option<Self> {
+        let symbol_tables = SymbolTables::default(file_name);
         let index = match tokens.get(index) {
             Some(token::Token::Key(token::Keyword::Class)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, 0)),
@@ -796,6 +800,17 @@ impl Statements {
     }
 }
 
+// labelの一意性を担保するためのsuffixを生成するための関数。
+// randomなので厳密には衝突する可能性があり、一意性を必ずしも担保できているとはいえないが、
+// 実装量をセーブするためにそこは妥協する。
+fn gen_random_6_characters_str() -> String {
+    let mut rng = rand::rng();
+    let mut v: Vec<u8> = (b'a'..=b'z').collect();
+    v.shuffle(&mut rng);
+    v = v[0..6].to_vec();
+    String::from_utf8(v).unwrap()
+}
+
 #[derive(Debug, PartialEq, Eq)]
 enum Statement {
     Let(LetStatement),
@@ -1068,23 +1083,29 @@ impl WhileStatement {
         (Self { condition, body }, index)
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        todo!();
-        let (open, close) = get_xml_tag("whileStatement".to_string());
-        let mut result = vec![open];
-        result.push(to_xml_tag(token::Keyword::While));
-        result.push(to_xml_tag(token::Symbol::LeftParen));
-        result = [result, self.condition.to_string(symbol_tables)].concat();
-        result.push(to_xml_tag(token::Symbol::RightParen));
-        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        let (while_start_label_name, while_end_label_name) = {
+            let label_base = format!(
+                "{}.{}:{}",
+                symbol_tables.file_name,
+                symbol_tables.current_subroutine_name.clone().unwrap(),
+                gen_random_6_characters_str()
+            );
 
-        let (statement_open, statement_close) = get_xml_tag("statements".to_string());
-        result.push(statement_open);
-        for p in &self.body.0 {
-            result = [result, p.to_string(symbol_tables)].concat();
+            (format!("{}_start", label_base), format!("{}_end", label_base))
+        };
+
+        let mut result = vec![format!("label {}", while_start_label_name)];
+
+        result = [result, self.condition.to_string(symbol_tables)].concat();
+        result.push("not".to_string());
+        result.push(format!("if-goto {}", while_end_label_name));
+
+        for statement in &self.body.0 {
+            result = [result, statement.to_string(symbol_tables)].concat();
         }
-        result.push(statement_close);
-        result.push(to_xml_tag(token::Symbol::RightBrace));
-        result.push(close);
+        result.push(format!("goto {}", while_start_label_name));
+
+        result.push(format!("label {}", while_end_label_name));
         result
     }
 }
@@ -1681,6 +1702,7 @@ mod test {
                 token::Token::Sym(token::Symbol::RightBrace),
                 token::Token::Sym(token::Symbol::RightBrace),
             ],
+            "Main".to_string(),
             0,
         );
         let expected = Some(Class {
@@ -1780,6 +1802,7 @@ mod test {
                 },
                 subroutine_scopes: std::collections::HashMap::new(),
                 current_subroutine_name: None,
+                file_name: "Main".to_string(),
             },
         });
         assert_eq!(input, expected);
@@ -1809,7 +1832,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             3,
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             vec![
@@ -1878,7 +1901,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             Some(SubroutineDec {
@@ -1959,7 +1982,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             Some(SubroutineDec {
@@ -2035,7 +2058,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("SquareGame".to_string())),
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             Some(SubroutineDec {
@@ -2106,7 +2129,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             Some(VarDec {
@@ -2131,7 +2154,7 @@ mod test {
                 token::Token::Sym(token::Symbol::SemiColon),
             ],
             0,
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             Some(VarDec {
@@ -2162,7 +2185,7 @@ mod test {
                 token::Token::Identifier(token::Identifier("y".to_string())),
             ],
             0,
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             ParameterList(vec![
@@ -2177,7 +2200,7 @@ mod test {
         /*
             (引数なし)
         */
-        let input = ParameterList::new(&[], 0, SymbolTables::default());
+        let input = ParameterList::new(&[], 0, SymbolTables::default("Main".to_string()));
         let expected = (ParameterList(vec![]), 0);
         assert_eq!(input.0, expected.0);
         assert_eq!(input.1, expected.1);
@@ -2876,7 +2899,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("Main".to_string())),
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             SubroutineBody {
@@ -2917,7 +2940,7 @@ mod test {
             ],
             0,
             &ClassName(token::Identifier("Main".to_string())),
-            SymbolTables::default(),
+            SymbolTables::default("Main".to_string()),
         );
         let expected = (
             SubroutineBody {
