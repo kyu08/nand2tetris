@@ -184,6 +184,8 @@ impl Identifier {
     #[allow(clippy::inherent_to_string)]
     pub fn to_string(&self) -> String {
         self.0.clone()
+        // let tag_name = "identifier";
+        // format!("<{}> {} </{}>", tag_name, &self.0, tag_name)
     }
 }
 

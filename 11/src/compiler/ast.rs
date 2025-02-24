@@ -770,7 +770,7 @@ impl ClassName {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct SubroutineName(token::Identifier);
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct VarName(token::Identifier);
@@ -785,7 +785,7 @@ impl VarName {
 /*
  * 文
  */
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Statements(Vec<Statement>);
 impl Statements {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
@@ -811,7 +811,7 @@ fn gen_random_6_characters_str() -> String {
     String::from_utf8(v).unwrap()
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Statement {
     Let(LetStatement),
     If(IfStatement),
@@ -856,7 +856,7 @@ impl Statement {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct LetStatement {
     var_name: VarName,
     array_index: Option<Expression>,
@@ -937,7 +937,7 @@ impl LetStatement {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct IfStatement {
     condition: Expression,
     positive_case_body: Statements,
@@ -1007,46 +1007,37 @@ impl IfStatement {
         }
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        todo!();
-        let (open, close) = get_xml_tag("ifStatement".to_string());
-        let mut result = vec![open];
-        result.push(to_xml_tag(token::Keyword::If));
-        result.push(to_xml_tag(token::Symbol::LeftParen));
-        result = [result, self.condition.to_string(symbol_tables)].concat();
-        result.push(to_xml_tag(token::Symbol::RightParen));
-        result.push(to_xml_tag(token::Symbol::LeftBrace));
+        let (negative_case_label_name, end_if_statement_label_name) = {
+            let label_base = format!(
+                "{}.{}:{}",
+                symbol_tables.file_name,
+                symbol_tables.current_subroutine_name.clone().unwrap(),
+                gen_random_6_characters_str()
+            );
 
-        let (statement_open, statement_close) = get_xml_tag("statements".to_string());
-        result.push(statement_open);
-        for p in &self.positive_case_body.0 {
-            result = [result, p.to_string(symbol_tables)].concat();
+            (format!("{}_if-start", label_base), format!("{}_if-end", label_base))
+        };
+
+        let mut result = self.condition.to_string(symbol_tables);
+        result.push("not".to_string());
+        result.push(format!("if-goto {}", negative_case_label_name));
+
+        for statement in &self.positive_case_body.0 {
+            result = [result, statement.to_string(symbol_tables)].concat();
         }
-        result.push(statement_close);
-        result.push(to_xml_tag(token::Symbol::RightBrace));
+        result.push(format!("goto {}", end_if_statement_label_name));
 
-        // panic!("{:?}", self);
-
-        match &self.negative_case_body {
-            Some(n_) => {
-                result.push(to_xml_tag(token::Keyword::Else));
-                result.push(to_xml_tag(token::Symbol::LeftBrace));
-                let (statement_open, statement_close) = get_xml_tag("statements".to_string());
-                result.push(statement_open);
-                for n in &n_.0 {
-                    result = [result, n.to_string(symbol_tables)].concat();
-                }
-                result.push(statement_close);
-                result.push(to_xml_tag(token::Symbol::RightBrace));
-            }
-            None => {}
+        result.push(format!("label {}", negative_case_label_name));
+        for statement in &self.negative_case_body.clone().unwrap().0 {
+            result = [result, statement.to_string(symbol_tables)].concat();
         }
 
-        result.push(close);
+        result.push(format!("label {}", end_if_statement_label_name));
         result
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct WhileStatement {
     condition: Expression,
     body: Statements,
@@ -1083,7 +1074,7 @@ impl WhileStatement {
         (Self { condition, body }, index)
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        let (while_start_label_name, while_end_label_name) = {
+        let (start_label_name, end_label_name) = {
             let label_base = format!(
                 "{}.{}:{}",
                 symbol_tables.file_name,
@@ -1091,26 +1082,26 @@ impl WhileStatement {
                 gen_random_6_characters_str()
             );
 
-            (format!("{}_start", label_base), format!("{}_end", label_base))
+            (format!("{}_while-start", label_base), format!("{}_while-end", label_base))
         };
 
-        let mut result = vec![format!("label {}", while_start_label_name)];
+        let mut result = vec![format!("label {}", start_label_name)];
 
         result = [result, self.condition.to_string(symbol_tables)].concat();
         result.push("not".to_string());
-        result.push(format!("if-goto {}", while_end_label_name));
+        result.push(format!("if-goto {}", end_label_name));
 
         for statement in &self.body.0 {
             result = [result, statement.to_string(symbol_tables)].concat();
         }
-        result.push(format!("goto {}", while_start_label_name));
+        result.push(format!("goto {}", start_label_name));
 
-        result.push(format!("label {}", while_end_label_name));
+        result.push(format!("label {}", end_label_name));
         result
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct DoStatement(SubroutineCall);
 impl DoStatement {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
@@ -1133,7 +1124,7 @@ impl DoStatement {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct ReturnStatement(Option<Expression>);
 impl ReturnStatement {
     fn new(tokens: &[token::Token], index: usize, class_name: &ClassName) -> (Self, usize) {
@@ -1166,7 +1157,7 @@ impl ReturnStatement {
 /*
  * 式
  */
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct Expression {
     term: Box<Term>,
     op_term: Vec<(Op, Term)>,
@@ -1206,7 +1197,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Term {
     IntegerConstant(token::IntegerConstant),
     StringConstant(token::StringConstant),
@@ -1313,7 +1304,7 @@ impl Term {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum KeyWordConstant {
     True,
     False,
@@ -1335,7 +1326,7 @@ impl KeyWordConstant {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct SubroutineCall {
     receiver: Option<Receiver>,
     name: SubroutineName,
@@ -1490,7 +1481,7 @@ impl Receiver {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 struct ExpressionList(Vec<Expression>);
 impl ExpressionList {
     // 無
@@ -1522,7 +1513,7 @@ impl ExpressionList {
     // }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum Op {
     Plus,
     Minus,
@@ -1565,7 +1556,7 @@ impl Op {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum UnaryOp {
     Minus,
     Tilde,
