@@ -522,12 +522,18 @@ impl SubroutineDec {
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
         let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
+        let local_var_count = symbol_tables.get_local_var_count();
         let mut result = vec![format!(
             "function {}.{} {}",
             class_name.0.to_string(),
             self.subroutine_name.0,
-            symbol_tables.get_local_var_count(),
+            local_var_count,
         )];
+
+        for l in 0..local_var_count {
+            result.push("push constant 0".to_string());
+            result.push(format!("pop local {}", l));
+        }
 
         result = [result, self.body.to_string(&symbol_tables)].concat();
         result

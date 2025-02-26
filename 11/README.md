@@ -13,7 +13,7 @@
            	- [x] do statementをコンパイル
            	- [x] subroutineをコンパイル
            	- [x] 不要なxmlを削除
-       	- [ ] ConvertToBin
+       	- [x] ConvertToBin
        	- [ ] Square
        	- [ ] Average
        	- [ ] Pong
