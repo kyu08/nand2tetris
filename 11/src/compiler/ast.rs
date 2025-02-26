@@ -126,6 +126,14 @@ impl SymbolTables {
             println!("\t{:?} {:?} {} #{}", v.symbol_type, v.type_, v.name, v.index);
         }
     }
+    fn get_local_var_count(&self) -> usize {
+        self.subroutine_scopes
+            .get(&self.current_subroutine_name.clone().unwrap())
+            .unwrap()
+            .values()
+            .filter(|s| s.symbol_type == SubroutineSymbolType::Var)
+            .count()
+    }
 }
 
 // symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
@@ -518,7 +526,7 @@ impl SubroutineDec {
             "function {}.{} {}",
             class_name.0.to_string(),
             self.subroutine_name.0,
-            self.parameter_list.0.len()
+            symbol_tables.get_local_var_count(),
         )];
 
         result = [result, self.body.to_string(&symbol_tables)].concat();
@@ -736,6 +744,11 @@ impl VarDec {
 
         (Some(Self { type_, var_name }), index, symbol_tables)
     }
+    // ConvertToBinを実行したら8001-8016が全部-1になってしまいダメそうなので治すところから
+    // デバッグの進め方
+    // 1. Main.jackを読んで処理内容を理解
+    // 2. どこまでうまく動いてるのかを突き止める
+
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         todo!("実装は不要だと思うが念の為残している");
         let mut result = vec![];
@@ -910,6 +923,9 @@ impl LetStatement {
         )
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
+        // FIXME: let statementが実行されると`Out of segment space in
+        // Main.main:2`のようなエラーが出ることがわかったので原因を探して修正する
+        // そもそもvardecのタイミングでメモリ領域を確保するなどする必要があるか...?
         let right = self.right_hand_side.to_string(symbol_tables);
         let mut result = right;
 
@@ -1149,7 +1165,7 @@ impl ReturnStatement {
                 }
                 result
             }
-            None => vec![],
+            None => vec!["return".to_string()],
         }
     }
 }
