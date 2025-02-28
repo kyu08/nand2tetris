@@ -221,7 +221,7 @@ impl Ast {
         Self { class }
     }
 
-    pub fn to_xml(&self) -> String {
+    pub fn to_vm(&self) -> String {
         self.class.to_string(&self.class.symbol_tables).join("\n")
     }
 }
@@ -291,11 +291,6 @@ impl Class {
 
     pub fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
-        // let (class_open, class_close) = get_xml_tag("class".to_string());
-        // result.push(class_open);
-        // result.push(to_xml_tag(token::Keyword::Class));
-        // result.push(self.name.0.to_string());
-        // result.push(to_xml_tag(token::Symbol::LeftBrace));
         for var_dec in &self.var_dec {
             result = [result, var_dec.to_string(&self.symbol_tables)].concat();
         }
@@ -303,8 +298,6 @@ impl Class {
             result = [result, subroutine.to_string(&self.name, symbol_tables)].concat();
         }
 
-        // result.push(to_xml_tag(token::Symbol::RightBrace));
-        // result.push(class_close);
         result
     }
 }
@@ -395,23 +388,23 @@ impl ClassVarDec {
 
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         todo!();
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("classVarDec".to_string());
-        result.push(open);
-        result.push(self.kind.to_string());
-        result.push(self.type_.to_string());
-        for (index, n) in self.var_names.iter().enumerate() {
-            if index != 0 {
-                result.push(to_xml_tag(token::Symbol::Comma));
-            }
-            result.push(n.to_string(symbol_tables));
-        }
-        if !&self.var_names.is_empty() {
-            result.push(to_xml_tag(token::Symbol::SemiColon));
-        }
-
-        result.push(close);
-        result
+        // let mut result = vec![];
+        // let (open, close) = get_xml_tag("classVarDec".to_string());
+        // result.push(open);
+        // result.push(self.kind.to_string());
+        // result.push(self.type_.to_string());
+        // for (index, n) in self.var_names.iter().enumerate() {
+        //     if index != 0 {
+        //         result.push(to_xml_tag(token::Symbol::Comma));
+        //     }
+        //     result.push(n.to_string(symbol_tables));
+        // }
+        // if !&self.var_names.is_empty() {
+        //     result.push(to_xml_tag(token::Symbol::SemiColon));
+        // }
+        //
+        // result.push(close);
+        // result
     }
 }
 
@@ -424,8 +417,8 @@ impl ClassVarKind {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
-        let (open, close) = get_xml_tag("keyword".to_string());
-        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+        // let (open, close) = get_xml_tag("keyword".to_string());
+        // format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
 }
 impl From<ClassVarKind> for ClassSymbolType {
@@ -457,17 +450,17 @@ impl Type {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
-        match self {
-            Type::ClassName(c) => {
-                todo!();
-                let (open, close) = get_xml_tag("identifier".to_string());
-                format!("{} {} {}", open, c, close)
-            }
-            _ => {
-                let (open, close) = get_xml_tag("keyword".to_string());
-                format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
-            }
-        }
+        // match self {
+        //     Type::ClassName(c) => {
+        //         todo!();
+        //         let (open, close) = get_xml_tag("identifier".to_string());
+        //         format!("{} {} {}", open, c, close)
+        //     }
+        //     _ => {
+        //         let (open, close) = get_xml_tag("keyword".to_string());
+        //         format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+        //     }
+        // }
     }
 }
 
@@ -558,8 +551,8 @@ impl SubroutineDecKind {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
-        let (open, close) = get_xml_tag("keyword".to_string());
-        format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+        // let (open, close) = get_xml_tag("keyword".to_string());
+        // format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
     }
 }
 
@@ -581,13 +574,13 @@ impl SubroutineDecType {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
-        match self {
-            SubroutineDecType::Void => {
-                let (open, close) = get_xml_tag("keyword".to_string());
-                format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
-            }
-            SubroutineDecType::Type_(t) => t.to_string(),
-        }
+        // match self {
+        //     SubroutineDecType::Void => {
+        //         let (open, close) = get_xml_tag("keyword".to_string());
+        //         format!("{} {} {}", open, format!("{:?}", self).to_lowercase(), close)
+        //     }
+        //     SubroutineDecType::Type_(t) => t.to_string(),
+        // }
     }
 }
 
@@ -628,18 +621,18 @@ impl ParameterList {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         todo!();
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("parameterList".to_string());
-        result.push(open);
-        for (index, p) in self.0.iter().enumerate() {
-            if index != 0 {
-                result.push(to_xml_tag(token::Symbol::Comma));
-            }
-            result.push(p.0.to_string());
-            result.push(p.1.to_string(symbol_tables));
-        }
-        result.push(close);
-        result
+        // let mut result = vec![];
+        // let (open, close) = get_xml_tag("parameterList".to_string());
+        // result.push(open);
+        // for (index, p) in self.0.iter().enumerate() {
+        //     if index != 0 {
+        //         result.push(to_xml_tag(token::Symbol::Comma));
+        //     }
+        //     result.push(p.0.to_string());
+        //     result.push(p.1.to_string(symbol_tables));
+        // }
+        // result.push(close);
+        // result
     }
 }
 
@@ -682,9 +675,6 @@ impl SubroutineBody {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
-        // for v in &self.var_dec {
-        //     result = [result, v.to_string(symbol_tables)].concat();
-        // }
         if !&self.statements.0.is_empty() {
             for s in &self.statements.0 {
                 result = [result, s.to_string(symbol_tables)].concat();
@@ -757,23 +747,23 @@ impl VarDec {
 
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         todo!("実装は不要だと思うが念の為残している");
-        let mut result = vec![];
-        let (open, close) = get_xml_tag("varDec".to_string());
-        result.push(open);
-        result.push(to_xml_tag(token::Keyword::Var));
-        result.push(self.type_.to_string());
-        for (index, n) in self.var_name.iter().enumerate() {
-            if index != 0 {
-                result.push(to_xml_tag(token::Symbol::Comma));
-            }
-            result.push(n.to_string(symbol_tables));
-        }
-        if !&self.var_name.is_empty() {
-            result.push(to_xml_tag(token::Symbol::SemiColon));
-        }
-
-        result.push(close);
-        result
+        // let mut result = vec![];
+        // let (open, close) = get_xml_tag("varDec".to_string());
+        // result.push(open);
+        // result.push(to_xml_tag(token::Keyword::Var));
+        // result.push(self.type_.to_string());
+        // for (index, n) in self.var_name.iter().enumerate() {
+        //     if index != 0 {
+        //         result.push(to_xml_tag(token::Symbol::Comma));
+        //     }
+        //     result.push(n.to_string(symbol_tables));
+        // }
+        // if !&self.var_name.is_empty() {
+        //     result.push(to_xml_tag(token::Symbol::SemiColon));
+        // }
+        //
+        // result.push(close);
+        // result
     }
 }
 
@@ -938,24 +928,6 @@ impl LetStatement {
         let left = symbol_tables.get(self.var_name.0 .0.clone());
         result.push(left.pop());
         result
-
-        // let (open, close) = get_xml_tag("letStatement".to_string());
-        // let mut result = vec![open];
-        // result.push(to_xml_tag(token::Keyword::Let));
-        // result.push(self.var_name.to_string(symbol_tables));
-        //
-        // // index
-        // if let Some(a) = &self.array_index {
-        //     result.push(to_xml_tag(token::Symbol::LeftBracket));
-        //     result = [result, a.to_string(symbol_tables)].concat();
-        //     result.push(to_xml_tag(token::Symbol::RightBracket));
-        // }
-        //
-        // result.push(to_xml_tag(token::Symbol::Equal));
-        // result = [result, self.right_hand_side.to_string(symbol_tables)].concat();
-        // result.push(to_xml_tag(token::Symbol::SemiColon));
-        // result.push(close);
-        // result
     }
 }
 
@@ -1309,11 +1281,12 @@ impl Term {
             Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {
                 let mut result = vec![v.to_string(symbol_tables)];
-                result.push(to_xml_tag(token::Symbol::LeftBracket));
-                result = [result, e.to_string(symbol_tables)].concat();
-                result.push(to_xml_tag(token::Symbol::RightBracket));
                 todo!();
-                result
+                // result.push(to_xml_tag(token::Symbol::LeftBracket));
+                // result = [result, e.to_string(symbol_tables)].concat();
+                // result.push(to_xml_tag(token::Symbol::RightBracket));
+                // todo!();
+                // result
             }
             Term::Expression(s) => s.to_string(symbol_tables),
             Term::UnaryOp(u, t) => {
@@ -1465,26 +1438,6 @@ impl SubroutineCall {
             }
             SubroutineDecKind::Method => todo!(),
         }
-        // let mut result = vec![];
-        // if let Some(r) = &self.receiver {
-        //     result.push(r.to_string());
-        //     result.push(to_xml_tag(token::Symbol::Dot));
-        // }
-        // result.push(self.name.0.to_string());
-        // result.push(to_xml_tag(token::Symbol::LeftParen));
-        //
-        // let (open, close) = get_xml_tag("expressionList".to_string());
-        // result.push(open);
-        // for (index, a) in self.arguments.0.iter().enumerate() {
-        //     if index != 0 {
-        //         result.push(to_xml_tag(token::Symbol::Comma));
-        //     }
-        //     result = [result, a.to_string()].concat();
-        // }
-        // result.push(close);
-        //
-        // result.push(to_xml_tag(token::Symbol::RightParen));
-        // result
     }
 }
 
@@ -1530,9 +1483,6 @@ impl ExpressionList {
 
         (Some(Self(expression_list)), index)
     }
-    // fn to_string(&self) -> Vec<String> {
-    //     self.0.iter().flat_map(|e| e.to_string()).collect()
-    // }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -1603,27 +1553,6 @@ impl UnaryOp {
 
 fn invalid_token(tokens: &[token::Token], index: usize) -> String {
     format!("invalid token {:?}[@{}]", tokens, index)
-}
-
-fn get_xml_tag(tag_name: String) -> (String, String) {
-    (format!("<{}>", tag_name), format!("</{}>", tag_name))
-}
-fn to_xml_tag<T: std::fmt::Debug>(value: T) -> String {
-    let type_name_slice = std::any::type_name_of_val(&value).split("::").collect::<Vec<&str>>();
-    let tag_name = to_lowercase_at_1(type_name_slice[type_name_slice.len() - 1]);
-    format!("<{}> {} </{}>", &tag_name, format!("{:?}", value).to_lowercase(), &tag_name)
-}
-
-fn to_lowercase_at_1(s: &str) -> String {
-    let mut result = String::with_capacity(s.len());
-    for (i, c) in s.chars().enumerate() {
-        if i == 0 {
-            result.extend(c.to_lowercase());
-        } else {
-            result.push(c);
-        }
-    }
-    result
 }
 
 #[cfg(test)]

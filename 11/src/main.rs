@@ -17,7 +17,7 @@ fn main() {
         let tokens = analyzer::token::Tokens::new(content);
         let output_file_path = target.with_extension("vm");
         let ast = ast::Ast::new(tokens.tokens, target.file_stem().unwrap().to_string_lossy().to_string());
-        let vm = ast.to_xml();
+        let vm = ast.to_vm();
         let _ = std::fs::write(output_file_path, vm);
     }
 }
