@@ -510,6 +510,17 @@ impl SubroutineDec {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
             _ => panic!("{}", invalid_token(tokens, index)),
         };
+
+        // methodだったらThisを追加する
+        let symbol_tables = match kind {
+            SubroutineDecKind::Method => symbol_tables.append_subroutine_symbol(
+                "this".to_string(),
+                Type::ClassName(class_name.0 .0.clone()),
+                SubroutineSymbolType::Arg,
+            ),
+            _ => symbol_tables,
+        };
+
         let (parameter_list, index, symbol_tables) = ParameterList::new(tokens, index, symbol_tables);
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::RightParen)) => index + 1,
@@ -530,42 +541,41 @@ impl SubroutineDec {
         )
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
+        let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
+        let local_var_count = symbol_tables.get_local_var_count();
+        let mut result = vec![format!(
+            "function {}.{} {}",
+            class_name.0.to_string(),
+            self.subroutine_name.0,
+            local_var_count,
+        )];
+
+        // ローカル変数を初期化
+        for l in 0..local_var_count {
+            result.push("push constant 0".to_string());
+            result.push(format!("pop local {}", l));
+        }
         match self.kind {
             SubroutineDecKind::Constructor => {
                 // class fieldの初期化
-                let mut result = vec![
-                    format!("push constant {}", symbol_tables.get_field_count()),
-                    "call Memory.alloc 1".to_string(),
-                    "pop pointer 0".to_string(),
-                ];
-                // bodyをコンパイル(return this;はbodyに含まれるためコンパイラが明示的に扱う必要はない)
-                result = [result, self.body.to_string(symbol_tables)].concat();
-                result
+                result = [
+                    result,
+                    vec![
+                        format!("push constant {}", symbol_tables.get_field_count()),
+                        "call Memory.alloc 1".to_string(),
+                        "pop pointer 0".to_string(),
+                    ],
+                ]
+                .concat();
             }
-            SubroutineDecKind::Function => {
-                let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
-                let local_var_count = symbol_tables.get_local_var_count();
-                let mut result = vec![format!(
-                    "function {}.{} {}",
-                    class_name.0.to_string(),
-                    self.subroutine_name.0,
-                    local_var_count,
-                )];
-
-                for l in 0..local_var_count {
-                    result.push("push constant 0".to_string());
-                    result.push(format!("pop local {}", l));
-                }
-
-                result = [result, self.body.to_string(&symbol_tables)].concat();
-                result
-            }
+            SubroutineDecKind::Function => {}
             SubroutineDecKind::Method => {
-                // TODO: here
-                let a = 1;
-                todo!()
+                // 最初の引数をThisにセット
+                result = [result, vec!["push argument 0".to_string(), "pop pointer 0".to_string()]].concat();
             }
-        }
+        };
+        result = [result, self.body.to_string(&symbol_tables)].concat();
+        result
     }
 }
 
