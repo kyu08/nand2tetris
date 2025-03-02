@@ -134,6 +134,12 @@ impl SymbolTables {
             .filter(|s| s.symbol_type == SubroutineSymbolType::Var)
             .count()
     }
+    fn get_field_count(&self) -> usize {
+        self.class_scope
+            .values()
+            .filter(|s| s.symbol_type == ClassSymbolType::Field)
+            .count()
+    }
 }
 
 // symbol_typeをgenericな型として外から受け取るとSubroutineSymbolと構造体定義を共通化できそうにも思えるが
@@ -514,22 +520,38 @@ impl SubroutineDec {
         )
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
-        let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
-        let local_var_count = symbol_tables.get_local_var_count();
-        let mut result = vec![format!(
-            "function {}.{} {}",
-            class_name.0.to_string(),
-            self.subroutine_name.0,
-            local_var_count,
-        )];
+        match self.kind {
+            SubroutineDecKind::Constructor => {
+                // class fieldの初期化
+                let mut result = vec![
+                    format!("push constant {}", symbol_tables.get_field_count()),
+                    "call Memory.alloc 1".to_string(),
+                    "pop pointer 0".to_string(),
+                ];
+                // bodyをコンパイル(return this;はbodyに含まれるためコンパイラが明示的に扱う必要はない)
+                result = [result, self.body.to_string(symbol_tables)].concat();
+                result
+            }
+            SubroutineDecKind::Function => {
+                let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
+                let local_var_count = symbol_tables.get_local_var_count();
+                let mut result = vec![format!(
+                    "function {}.{} {}",
+                    class_name.0.to_string(),
+                    self.subroutine_name.0,
+                    local_var_count,
+                )];
 
-        for l in 0..local_var_count {
-            result.push("push constant 0".to_string());
-            result.push(format!("pop local {}", l));
+                for l in 0..local_var_count {
+                    result.push("push constant 0".to_string());
+                    result.push(format!("pop local {}", l));
+                }
+
+                result = [result, self.body.to_string(&symbol_tables)].concat();
+                result
+            }
+            SubroutineDecKind::Method => todo!(),
         }
-
-        result = [result, self.body.to_string(&symbol_tables)].concat();
-        result
     }
 }
 
@@ -672,7 +694,6 @@ impl SubroutineBody {
 
         (Self { var_dec, statements }, index, symbol_tables)
     }
-    #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
         if !&self.statements.0.is_empty() {
@@ -1398,7 +1419,6 @@ impl SubroutineCall {
             )
         }
     }
-
     /// method: {class型の変数}.foo() || foo()
     /// {class型の変数}はsymbol_tablesに格納されている
     /// おそらく小文字スタート
@@ -1420,8 +1440,7 @@ impl SubroutineCall {
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match self.which_subroutine_kind() {
-            SubroutineDecKind::Constructor => todo!(),
-            SubroutineDecKind::Function => {
+            SubroutineDecKind::Constructor | SubroutineDecKind::Function => {
                 let mut result = vec![];
                 for a in &self.arguments.0 {
                     result = [result, a.to_string(symbol_tables)].concat();
