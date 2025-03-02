@@ -1064,8 +1064,10 @@ impl IfStatement {
         result.push(format!("goto {}", end_if_statement_label_name));
 
         result.push(format!("label {}", negative_case_label_name));
-        for statement in &self.negative_case_body.clone().unwrap().0 {
-            result = [result, statement.to_string(symbol_tables)].concat();
+        if let Some(negative_case_body) = &self.negative_case_body {
+            for statement in &negative_case_body.0 {
+                result = [result, statement.to_string(symbol_tables)].concat();
+            }
         }
 
         result.push(format!("label {}", end_if_statement_label_name));
