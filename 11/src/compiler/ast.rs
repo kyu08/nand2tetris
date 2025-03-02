@@ -1427,7 +1427,7 @@ impl SubroutineCall {
                     result = [result, a.to_string(symbol_tables)].concat();
                 }
 
-                // e.g. call Foo.Bar self.arguments.len
+                // e.g. call Foo.Bar 2
                 result.push(format!(
                     "call {}.{} {}",
                     self.receiver.clone().unwrap().to_string(),
