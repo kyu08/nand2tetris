@@ -211,6 +211,16 @@ impl Symbol {
     fn pop(&self) -> String {
         format!("pop {}", self.to_vm())
     }
+    // あるシンボルが任意のclassのインスタンスのとき、その型名を返す
+    fn get_class_instance_type(&self) -> Option<ClassName> {
+        match self {
+            Symbol::Class(_) => None,
+            Symbol::Subroutine(s) => match &s.type_ {
+                Type::ClassName(c) => Some(ClassName(token::Identifier(c.to_string()))),
+                _ => None,
+            },
+        }
+    }
 }
 
 impl Ast {
@@ -550,7 +560,11 @@ impl SubroutineDec {
                 result = [result, self.body.to_string(&symbol_tables)].concat();
                 result
             }
-            SubroutineDecKind::Method => todo!(),
+            SubroutineDecKind::Method => {
+                // TODO: here
+                let a = 1;
+                todo!()
+            }
         }
     }
 }
@@ -570,7 +584,6 @@ impl SubroutineDecKind {
             _ => (None, index),
         }
     }
-    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
         // let (open, close) = get_xml_tag("keyword".to_string());
@@ -593,7 +606,6 @@ impl SubroutineDecType {
             },
         }
     }
-    #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> String {
         todo!();
         // match self {
@@ -1301,12 +1313,11 @@ impl Term {
             Term::KeyWordConstant(s) => s.to_string(),
             Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {
-                let mut result = vec![v.to_string(symbol_tables)];
                 todo!();
+                let mut result = vec![v.to_string(symbol_tables)];
                 // result.push(to_xml_tag(token::Symbol::LeftBracket));
                 // result = [result, e.to_string(symbol_tables)].concat();
                 // result.push(to_xml_tag(token::Symbol::RightBracket));
-                // todo!();
                 // result
             }
             Term::Expression(s) => s.to_string(symbol_tables),
@@ -1344,6 +1355,7 @@ impl KeyWordConstant {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct SubroutineCall {
+    // FIXME: VarNameしかこないはずなのでリファクタできそう。
     receiver: Option<Receiver>,
     name: SubroutineName,
     arguments: ExpressionList,
@@ -1455,7 +1467,41 @@ impl SubroutineCall {
                 ));
                 result
             }
-            SubroutineDecKind::Method => todo!(),
+            SubroutineDecKind::Method => {
+                match &self.receiver {
+                    Some(Receiver::ClassName(_)) => {
+                        panic!("このパターンは存在しないはず")
+                    }
+                    Some(Receiver::VarName(v)) => {
+                        // push v
+                        let mut result = vec![format!("push {}", symbol_tables.get(v.0 .0.clone()).to_vm())];
+
+                        // 引数をすべてpush
+                        for a in &self.arguments.0 {
+                            result = [result, a.to_string(symbol_tables)].concat();
+                        }
+                        // call foo.Bar n+1
+                        result.push(format!(
+                            "call {}.{} {}",
+                            symbol_tables
+                                .get(v.0 .0.clone())
+                                .get_class_instance_type()
+                                .unwrap()
+                                .0
+                                 .0,
+                            self.name.0.to_string(),
+                            self.arguments.0.len() + 1
+                        ));
+                        result
+                    }
+                    None => {
+                        // TODO: push this
+                        // 引数をすべてpush
+                        // call foo.Bar n+1
+                        todo!("メソッド内でのメソッド呼び出しでthisが省略されているケース")
+                    }
+                }
+            }
         }
     }
 }
