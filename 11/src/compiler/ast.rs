@@ -783,11 +783,6 @@ impl VarDec {
 
         (Some(Self { type_, var_name }), index, symbol_tables)
     }
-    // ConvertToBinを実行したら8001-8016が全部-1になってしまいダメそうなので治すところから
-    // デバッグの進め方
-    // 1. Main.jackを読んで処理内容を理解
-    // 2. どこまでうまく動いてるのかを突き止める
-
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         todo!("実装は不要だと思うが念の為残している");
         // let mut result = vec![];
