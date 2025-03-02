@@ -93,15 +93,17 @@ impl SymbolTables {
         st.current_subroutine_name = Some(subroutine_name);
         st
     }
-    fn get(&self, var_name: String) -> Symbol {
-        if let Some(s) = self
-            .subroutine_scopes
-            .get(&self.current_subroutine_name.clone().unwrap())
-            .unwrap()
-            .get(&var_name)
-        {
+    fn get(&self, class_name: Option<&str>, var_name: &str) -> Symbol {
+        let class_name = {
+            if let Some(c) = class_name {
+                c
+            } else {
+                &self.current_subroutine_name.clone().unwrap()
+            }
+        };
+        if let Some(s) = self.subroutine_scopes.get(class_name).unwrap().get(var_name) {
             Symbol::Subroutine(s.clone())
-        } else if let Some(s) = self.class_scope.get(&var_name) {
+        } else if let Some(s) = self.class_scope.get(var_name) {
             Symbol::Class(s.clone())
         } else {
             panic!("{:?} not found in {:?}", var_name, self);
@@ -307,9 +309,10 @@ impl Class {
 
     pub fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut result = vec![];
-        for var_dec in &self.var_dec {
-            result = [result, var_dec.to_string(&self.symbol_tables)].concat();
-        }
+        // NOTE: 場合によってはクラス変数の初期化処理が必要かもしれない
+        // for var_dec in &self.var_dec {
+        //     result = [result, var_dec.to_string(&self.symbol_tables)].concat();
+        // }
         for subroutine in &self.subroutine_dec {
             result = [result, subroutine.to_string(&self.name, symbol_tables)].concat();
         }
@@ -403,7 +406,7 @@ impl ClassVarDec {
     }
 
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        todo!();
+        todo!("実装は不要だと思うが念の為残している");
         // let mut result = vec![];
         // let (open, close) = get_xml_tag("classVarDec".to_string());
         // result.push(open);
@@ -505,6 +508,7 @@ impl SubroutineDec {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
         let symbol_tables = symbol_tables.add_subroutine_symbol_table(subroutine_name.0.clone());
+        // FIXME: なぜかdrawメソッドの情報がsymbol_tableにない
 
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
@@ -824,7 +828,7 @@ struct VarName(token::Identifier);
 impl VarName {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> String {
-        let symbol = symbol_tables.get(self.0 .0.clone());
+        let symbol = symbol_tables.get(None, &self.0 .0);
         symbol.push()
     }
 }
@@ -963,7 +967,7 @@ impl LetStatement {
         let right = self.right_hand_side.to_string(symbol_tables);
         let mut result = right;
 
-        let left = symbol_tables.get(self.var_name.0 .0.clone());
+        let left = symbol_tables.get(None, &self.var_name.0 .0);
         result.push(left.pop());
         result
     }
@@ -1473,39 +1477,39 @@ impl SubroutineCall {
                 result
             }
             SubroutineDecKind::Method => {
-                match &self.receiver {
+                let symbol_name = match &self.receiver {
                     Some(Receiver::ClassName(_)) => {
                         panic!("このパターンは存在しないはず")
                     }
-                    Some(Receiver::VarName(v)) => {
-                        // push v
-                        let mut result = vec![format!("push {}", symbol_tables.get(v.0 .0.clone()).to_vm())];
+                    Some(Receiver::VarName(v)) => v.0 .0.clone(),
+                    // メソッド内でのメソッド呼び出しでthisが省略されているケース
+                    None => "this".to_string(),
+                };
 
-                        // 引数をすべてpush
-                        for a in &self.arguments.0 {
-                            result = [result, a.to_string(symbol_tables)].concat();
-                        }
-                        // call foo.Bar n+1
-                        result.push(format!(
-                            "call {}.{} {}",
-                            symbol_tables
-                                .get(v.0 .0.clone())
-                                .get_class_instance_type()
-                                .unwrap()
-                                .0
-                                 .0,
-                            self.name.0.to_string(),
-                            self.arguments.0.len() + 1
-                        ));
-                        result
-                    }
-                    None => {
-                        // TODO: push this
-                        // 引数をすべてpush
-                        // call foo.Bar n+1
-                        todo!("メソッド内でのメソッド呼び出しでthisが省略されているケース")
-                    }
+                // レシーバをpush
+                let mut result = vec![format!(
+                    "push {}",
+                    symbol_tables.get(Some(&self.name.0 .0), &symbol_name).to_vm()
+                )];
+
+                // 残りの引数をすべてpush
+                for a in &self.arguments.0 {
+                    result = [result, a.to_string(symbol_tables)].concat();
                 }
+
+                // call foo.Bar n+1
+                result.push(format!(
+                    "call {}.{} {}",
+                    symbol_tables
+                        .get(Some(&self.name.0 .0), &symbol_name)
+                        .get_class_instance_type()
+                        .unwrap()
+                        .0
+                         .0,
+                    self.name.0.to_string(),
+                    self.arguments.0.len() + 1
+                ));
+                result
             }
         }
     }
