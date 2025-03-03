@@ -192,6 +192,7 @@ impl SubroutineSymbolType {
     }
 }
 
+#[derive(Debug)]
 enum Symbol {
     Class(ClassSymbol),
     Subroutine(SubroutineSymbol),
@@ -216,7 +217,10 @@ impl Symbol {
     // あるシンボルが任意のclassのインスタンスのとき、その型名を返す
     fn get_class_instance_type(&self) -> Option<ClassName> {
         match self {
-            Symbol::Class(_) => None,
+            Symbol::Class(c) => match &c.type_ {
+                Type::ClassName(c) => Some(ClassName(token::Identifier(c.to_string()))),
+                _ => None,
+            },
             Symbol::Subroutine(s) => match &s.type_ {
                 Type::ClassName(c) => Some(ClassName(token::Identifier(c.to_string()))),
                 _ => None,
@@ -1479,7 +1483,7 @@ impl SubroutineCall {
                 result
             }
             SubroutineDecKind::Method => {
-                let symbol_name = match &self.receiver {
+                let receiver_symbol_name = match &self.receiver {
                     Some(Receiver::ClassName(_)) => {
                         panic!("このパターンは存在しないはず")
                     }
@@ -1491,7 +1495,7 @@ impl SubroutineCall {
                 // レシーバをpush
                 let mut result = vec![format!(
                     "push {}",
-                    symbol_tables.get(Some(&self.name.0 .0), &symbol_name).to_vm()
+                    symbol_tables.get(Some(&self.name.0 .0), &receiver_symbol_name).to_vm()
                 )];
 
                 // 残りの引数をすべてpush
@@ -1499,11 +1503,12 @@ impl SubroutineCall {
                     result = [result, a.to_string(symbol_tables)].concat();
                 }
 
+                println!("🥇{} | {}", &receiver_symbol_name, &self.name.0 .0,);
                 // call foo.Bar n+1
                 result.push(format!(
                     "call {}.{} {}",
                     symbol_tables
-                        .get(Some(&self.name.0 .0), &symbol_name)
+                        .get(Some(&self.name.0 .0), &receiver_symbol_name)
                         .get_class_instance_type()
                         .unwrap()
                         .0
