@@ -93,15 +93,19 @@ impl SymbolTables {
         st.current_subroutine_name = Some(subroutine_name);
         st
     }
-    fn get(&self, class_name: Option<&str>, var_name: &str) -> Symbol {
-        let class_name = {
-            if let Some(c) = class_name {
-                c
-            } else {
-                &self.current_subroutine_name.clone().unwrap()
+    fn get(&self, subroutine_name: Option<&str>, var_name: &str) -> Symbol {
+        let subroutine_name = {
+            // class_nameってどういうときに指定するんだっけ
+            match subroutine_name {
+                Some(c) => c,
+                None => &self.current_subroutine_name.clone().unwrap(),
             }
         };
-        if let Some(s) = self.subroutine_scopes.get(class_name).unwrap().get(var_name) {
+        println!("🌱{}.{}", var_name, subroutine_name);
+        // FIXME: ここは呼び出し先のメソッド名ではなく今いるスコープのメソッド名にすべき。
+        // そのためにもやはり今とは方針を変えてsymbol_tables.current_subroutine_nameを更新するようにすべき。
+        // といっても
+        if let Some(s) = self.subroutine_scopes.get(subroutine_name).unwrap().get(var_name) {
             Symbol::Subroutine(s.clone())
         } else if let Some(s) = self.class_scope.get(var_name) {
             Symbol::Class(s.clone())
