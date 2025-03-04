@@ -15,6 +15,9 @@
            	- [x] 不要なxmlを削除
        	- [x] ConvertToBin
        	- [ ] Square
+            - [ ] 以下もデグレしてないか改めて確認
+                - [ ] Seven
+                - [ ] ConvertToBin
        	- [ ] Average
        	- [ ] Pong
        	- [ ] ComplexArrays

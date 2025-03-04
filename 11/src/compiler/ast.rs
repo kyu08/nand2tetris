@@ -93,19 +93,13 @@ impl SymbolTables {
         st.current_subroutine_name = Some(subroutine_name);
         st
     }
-    fn get(&self, subroutine_name: Option<&str>, var_name: &str) -> Symbol {
-        let subroutine_name = {
-            // class_nameってどういうときに指定するんだっけ
-            match subroutine_name {
-                Some(c) => c,
-                None => &self.current_subroutine_name.clone().unwrap(),
-            }
-        };
-        println!("🌱{}.{}", var_name, subroutine_name);
-        // FIXME: ここは呼び出し先のメソッド名ではなく今いるスコープのメソッド名にすべき。
-        // そのためにもやはり今とは方針を変えてsymbol_tables.current_subroutine_nameを更新するようにすべき。
-        // といっても
-        if let Some(s) = self.subroutine_scopes.get(subroutine_name).unwrap().get(var_name) {
+    fn get(&self, var_name: &str) -> Symbol {
+        if let Some(s) = self
+            .subroutine_scopes
+            .get(&self.current_subroutine_name.clone().unwrap())
+            .unwrap()
+            .get(var_name)
+        {
             Symbol::Subroutine(s.clone())
         } else if let Some(s) = self.class_scope.get(var_name) {
             Symbol::Class(s.clone())
@@ -190,7 +184,7 @@ impl SubroutineSymbolType {
         match self {
             SubroutineSymbolType::Var => "local",
             SubroutineSymbolType::Arg => "argument",
-            SubroutineSymbolType::Subroutine => todo!(),
+            SubroutineSymbolType::Subroutine => todo!(), // FIXME: もしやこのvariantはいらない？
         }
         .to_string()
     }
@@ -553,7 +547,7 @@ impl SubroutineDec {
         )
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
-        let symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
+        let mut symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
         let local_var_count = symbol_tables.get_local_var_count();
         let mut result = vec![format!(
             "function {}.{} {}",
@@ -579,6 +573,11 @@ impl SubroutineDec {
                     ],
                 ]
                 .concat();
+                symbol_tables = symbol_tables.append_subroutine_symbol(
+                    "this".to_string(),
+                    Type::ClassName(class_name.0 .0.clone()),
+                    SubroutineSymbolType::Var,
+                );
             }
             SubroutineDecKind::Function => {}
             SubroutineDecKind::Method => {
@@ -836,7 +835,7 @@ struct VarName(token::Identifier);
 impl VarName {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self, symbol_tables: &SymbolTables) -> String {
-        let symbol = symbol_tables.get(None, &self.0 .0);
+        let symbol = symbol_tables.get(&self.0 .0);
         symbol.push()
     }
 }
@@ -975,7 +974,7 @@ impl LetStatement {
         let right = self.right_hand_side.to_string(symbol_tables);
         let mut result = right;
 
-        let left = symbol_tables.get(None, &self.var_name.0 .0);
+        let left = symbol_tables.get(&self.var_name.0 .0);
         result.push(left.pop());
         result
     }
@@ -1497,22 +1496,18 @@ impl SubroutineCall {
                 };
 
                 // レシーバをpush
-                let mut result = vec![format!(
-                    "push {}",
-                    symbol_tables.get(Some(&self.name.0 .0), &receiver_symbol_name).to_vm()
-                )];
+                let mut result = vec![format!("push {}", symbol_tables.get(&receiver_symbol_name).to_vm())];
 
                 // 残りの引数をすべてpush
                 for a in &self.arguments.0 {
                     result = [result, a.to_string(symbol_tables)].concat();
                 }
 
-                println!("🥇{} | {}", &receiver_symbol_name, &self.name.0 .0,);
                 // call foo.Bar n+1
                 result.push(format!(
                     "call {}.{} {}",
                     symbol_tables
-                        .get(Some(&self.name.0 .0), &receiver_symbol_name)
+                        .get(&receiver_symbol_name)
                         .get_class_instance_type()
                         .unwrap()
                         .0
