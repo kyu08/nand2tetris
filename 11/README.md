@@ -15,9 +15,10 @@
            	- [x] 不要なxmlを削除
        	- [x] ConvertToBin
        	- [ ] Square
-            - [ ] 以下もデグレしてないか改めて確認
-                - [ ] Seven
-                - [ ] ConvertToBin
+            - `Out of segment space in Square.new.10`というエラーが出て終了する
+            - [x] 以下もデグレしてないか改めて確認
+                - [x] Seven
+                - [x] ConvertToBin
        	- [ ] Average
        	- [ ] Pong
        	- [ ] ComplexArrays
