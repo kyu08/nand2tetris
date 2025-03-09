@@ -1354,7 +1354,7 @@ impl KeyWordConstant {
     #[allow(clippy::inherent_to_string)]
     fn to_string(&self) -> Vec<String> {
         match self {
-            KeyWordConstant::True => vec!["push constant 1", "neg"],
+            KeyWordConstant::True => vec!["push constant 0", "not"],
             KeyWordConstant::False => vec!["push constant 0"],
             KeyWordConstant::Null => vec!["push constant 0"],
             KeyWordConstant::This => vec!["push pointer 0"],
