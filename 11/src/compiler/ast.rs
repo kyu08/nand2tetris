@@ -1317,7 +1317,7 @@ impl Term {
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
         match self {
             Term::IntegerConstant(s) => vec![s.to_string()],
-            Term::StringConstant(s) => vec![s.to_string(), todo!()],
+            Term::StringConstant(s) => s.to_string(),
             Term::KeyWordConstant(s) => s.to_string(),
             Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {

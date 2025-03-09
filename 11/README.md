@@ -20,6 +20,8 @@
                 - [x] Seven
                 - [x] ConvertToBin
        	- [ ] Average
+            - [x] 文字列のコンパイルを実装
+            - [ ] 配列のコンパイルを実装
        	- [ ] Pong
        	- [ ] ComplexArrays
 

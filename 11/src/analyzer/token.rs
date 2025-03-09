@@ -1,3 +1,5 @@
+use std::arch::aarch64::uint8x8_t;
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct Tokens {
     pub tokens: Vec<Token>,
@@ -173,9 +175,32 @@ impl IntegerConstant {
 pub struct StringConstant(pub String);
 impl StringConstant {
     #[allow(clippy::inherent_to_string)]
-    pub fn to_string(&self) -> String {
-        let (open, close) = get_xml_tag("stringConstant".to_string());
-        format!("{} {} {}", open, self.0, close)
+    pub fn to_string(&self) -> Vec<String> {
+        // Stringコンストラクタを呼び出してオブジェクトを初期化
+        let mut result = vec![];
+        let len = self.0.len();
+        result = [
+            result,
+            vec![format!("push constant {}", len), "call String.new 1".to_string()],
+        ]
+        .concat();
+        // stringを1文字ずつ取り出してASCIIコードに変換してappendCharメソッドを呼び出す
+        for char in self.0.chars() {
+            // charをASCIIコードに変換
+            let ascii_code = char as u8;
+            // appendCharメソッドを使って文字を追加
+            result = [
+                result,
+                vec![
+                    format!("push constant {}", ascii_code),
+                    "call String.appendChar 2".to_string(),
+                ],
+            ]
+            .concat()
+        }
+        // ここで生成したStringインスタンスを明示的にstackにpushする必要はない。
+        // `call String.appendChar 2`の返り値がレシーバなのでstackのtopにStringインスタンスが残った状態になるため。
+        result
     }
 }
 #[derive(Debug, PartialEq, Eq, Clone)]
