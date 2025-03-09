@@ -177,14 +177,14 @@ struct SubroutineSymbol {
 enum SubroutineSymbolType {
     Var,
     Arg,
-    Subroutine,
+    Pointer,
 }
 impl SubroutineSymbolType {
     fn to_segment_name(&self) -> String {
         match self {
             SubroutineSymbolType::Var => "local",
             SubroutineSymbolType::Arg => "argument",
-            SubroutineSymbolType::Subroutine => todo!(), // FIXME: もしやこのvariantはいらない？
+            SubroutineSymbolType::Pointer => "pointer",
         }
         .to_string()
     }
@@ -522,7 +522,7 @@ impl SubroutineDec {
             SubroutineDecKind::Method => symbol_tables.append_subroutine_symbol(
                 "this".to_string(),
                 Type::ClassName(class_name.0 .0.clone()),
-                SubroutineSymbolType::Arg,
+                SubroutineSymbolType::Pointer,
             ),
             _ => symbol_tables,
         };
@@ -570,7 +570,7 @@ impl SubroutineDec {
                 symbol_tables = symbol_tables.append_subroutine_symbol(
                     "this".to_string(),
                     Type::ClassName(class_name.0 .0.clone()),
-                    SubroutineSymbolType::Var,
+                    SubroutineSymbolType::Pointer,
                 );
             }
             SubroutineDecKind::Function => {}
