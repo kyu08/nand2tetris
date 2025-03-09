@@ -510,7 +510,6 @@ impl SubroutineDec {
             _ => panic!("{}", invalid_token(tokens, index)),
         };
         let symbol_tables = symbol_tables.add_subroutine_symbol_table(subroutine_name.0.clone());
-        // FIXME: なぜかdrawメソッドの情報がsymbol_tableにない
 
         let index = match tokens.get(index) {
             Some(token::Token::Sym(token::Symbol::LeftParen)) => index + 1,
@@ -962,9 +961,6 @@ impl LetStatement {
         )
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        // FIXME: let statementが実行されると`Out of segment space in
-        // Main.main:2`のようなエラーが出ることがわかったので原因を探して修正する
-        // そもそもvardecのタイミングでメモリ領域を確保するなどする必要があるか...?
         let right = self.right_hand_side.to_string(symbol_tables);
         let mut result = right;
 

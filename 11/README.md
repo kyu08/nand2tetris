@@ -14,7 +14,7 @@
            	- [x] subroutineをコンパイル
            	- [x] 不要なxmlを削除
        	- [x] ConvertToBin
-       	- [ ] Square
+       	- [x] Square
             - `Out of segment space in Square.new.10`というエラーが出て終了する
             - [x] 以下もデグレしてないか改めて確認
                 - [x] Seven
