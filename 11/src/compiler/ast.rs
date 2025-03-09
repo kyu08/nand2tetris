@@ -1188,7 +1188,7 @@ impl ReturnStatement {
                 }
                 result
             }
-            None => vec!["return".to_string()],
+            None => vec!["push constant 0".to_string(), "return".to_string()],
         }
     }
 }
