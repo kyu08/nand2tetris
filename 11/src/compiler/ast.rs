@@ -548,19 +548,13 @@ impl SubroutineDec {
     }
     fn to_string(&self, class_name: &ClassName, symbol_tables: &SymbolTables) -> Vec<String> {
         let mut symbol_tables = symbol_tables.update_current_subroutine_name(self.subroutine_name.0.clone());
-        let local_var_count = symbol_tables.get_local_var_count();
         let mut result = vec![format!(
             "function {}.{} {}",
             class_name.0.to_string(),
             self.subroutine_name.0,
-            local_var_count,
+            symbol_tables.get_local_var_count(),
         )];
 
-        // ローカル変数を初期化
-        for l in 0..local_var_count {
-            result.push("push constant 0".to_string());
-            result.push(format!("pop local {}", l));
-        }
         match self.kind {
             SubroutineDecKind::Constructor => {
                 // class fieldの初期化
