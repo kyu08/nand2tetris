@@ -961,12 +961,33 @@ impl LetStatement {
         )
     }
     fn to_string(&self, symbol_tables: &SymbolTables) -> Vec<String> {
-        let right = self.right_hand_side.to_string(symbol_tables);
-        let mut result = right;
+        match self.array_index {
+            Some(a) => {
+                // 左辺を評価してpush
+                let mut result = vec![];
+                // 右辺を評価してpush
 
-        let left = symbol_tables.get(&self.var_name.0 .0);
-        result.push(left.pop());
-        result
+                // 右辺をtemp 0にpop
+                // 左辺をpointer 1にpop
+                // temp 0をthat 0にpop
+
+                result
+
+                // NOTE:
+                // ## pointer 0とthat 0の違い
+                // pointer segmentにはthisとthatのベースアドレスが格納されている。
+                // that 0を操作すると実際の値を操作することができる。pointer 0やpointer
+                // 1にはあくまでどこにTHISとTHATの実体が位置しているかを指しているだけ。
+            }
+            None => {
+                let right = self.right_hand_side.to_string(symbol_tables);
+                let mut result = right;
+
+                let left = symbol_tables.get(&self.var_name.0 .0);
+                result.push(left.pop());
+                result
+            }
+        }
     }
 }
 
@@ -1321,12 +1342,12 @@ impl Term {
             Term::KeyWordConstant(s) => s.to_string(),
             Term::VarName(s) => vec![s.to_string(symbol_tables)],
             Term::ArrayIndexAccess(v, e) => {
-                todo!();
+                // vとeのアドレスを足し合わせる
                 let mut result = vec![v.to_string(symbol_tables)];
-                // result.push(to_xml_tag(token::Symbol::LeftBracket));
-                // result = [result, e.to_string(symbol_tables)].concat();
-                // result.push(to_xml_tag(token::Symbol::RightBracket));
-                // result
+                result = [result, e.to_string(symbol_tables)].concat();
+                result.push("add".to_string());
+
+                result
             }
             Term::Expression(s) => s.to_string(symbol_tables),
             Term::UnaryOp(u, t) => {
