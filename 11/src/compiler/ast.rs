@@ -1619,7 +1619,7 @@ impl Op {
             Op::Plus => "add".to_string(),
             Op::Minus => "sub".to_string(),
             Op::Multiply => "call Math.multiply 2".to_string(),
-            Op::Div => "call Math.Divide 2".to_string(),
+            Op::Div => "call Math.divide 2".to_string(),
             Op::Ampersand => "and".to_string(),
             Op::Pipe => "or".to_string(),
             Op::LessThan => "lt".to_string(),
