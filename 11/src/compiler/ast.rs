@@ -1356,6 +1356,8 @@ impl Term {
                 let mut result = vec![v.to_string(symbol_tables)];
                 result = [result, e.to_string(symbol_tables)].concat();
                 result.push("add".to_string());
+                result.push("pop pointer 1".to_string()); // 計算したアドレスをポインタにセット
+                result.push("push that 0".to_string()); // そのアドレスの値を取得
 
                 result
             }

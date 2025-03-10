@@ -19,9 +19,10 @@
             - [x] 以下もデグレしてないか改めて確認
                 - [x] Seven
                 - [x] ConvertToBin
-       	- [ ] Average
+       	- [x] Average
             - [x] 文字列のコンパイルを実装
-            - [ ] 配列のコンパイルを実装
+            - [x] 配列のコンパイルを実装
+            - [x] テストのパスを確認
        	- [ ] Pong
        	- [ ] ComplexArrays
 
