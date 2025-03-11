@@ -518,11 +518,22 @@ impl SubroutineDec {
 
         // methodだったらThisを追加する
         let symbol_tables = match kind {
-            SubroutineDecKind::Method => symbol_tables.append_subroutine_symbol(
-                "this".to_string(),
-                Type::ClassName(class_name.0 .0.clone()),
-                SubroutineSymbolType::Pointer,
-            ),
+            SubroutineDecKind::Method => {
+                // メソッドの場合は0番目の引数はthisになる。
+                // シンボルテーブルから取得する際はpointerから取得するのでargのthisは取得されない。
+                // シンボルテーブルに引数を追加するときに1スタートにする手もあるが、実装の容易性を優先して
+                // ダミーのシンボルを追加する方針をとった。
+                let symbol_tables = symbol_tables.append_subroutine_symbol(
+                    "pseudo_arg_for_receiver".to_string(),
+                    Type::ClassName(class_name.0 .0.clone()),
+                    SubroutineSymbolType::Arg,
+                );
+                symbol_tables.append_subroutine_symbol(
+                    "this".to_string(),
+                    Type::ClassName(class_name.0 .0.clone()),
+                    SubroutineSymbolType::Pointer,
+                )
+            }
             _ => symbol_tables,
         };
 
