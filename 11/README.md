@@ -5,9 +5,9 @@
    	- [x] コード出力時にシンボルテーブルの情報を出力する(field, static, var, arg, class, subroutine)
    	- [x] subroutineってsymbol_tableに追加する必要はあるんだっけ？	-> なさそうなのでひとまずスルー
    	- [x] symbol_tableの実装がうまく動いてそうなことを確認
-- [ ] コード生成の実装
-   	- [ ] 実装する
-   	- [ ] テスト
+- [x] コード生成の実装
+   	- [x] 実装する
+   	- [x] テスト
        	- [x] Seven
            	- [x] 式をコンパイル
            	- [x] do statementをコンパイル
@@ -24,7 +24,7 @@
             - [x] 配列のコンパイルを実装
             - [x] テストのパスを確認
        	- [x] Pong
-       	- [ ] ComplexArrays
+       	- [x] ComplexArrays
 
 
 # 現在処理中のsubroutineの`symbol_table`をどう管理するを考えたときのメモ
