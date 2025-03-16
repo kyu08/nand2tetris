@@ -2,6 +2,12 @@
 - [x] Memory
 - [x] Array
 - [ ] Math
+    - [x] multiply
+    - [ ] divide
+    - [ ] sqrt
+    - [ ] min
+    - [ ] max
+    - [ ] abs
 - [ ] String
 - [ ] Output
 - [ ] Screen

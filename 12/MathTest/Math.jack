@@ -12,9 +12,11 @@
 class Math {
     static int n;             // Number of bits used for representing a two's complement integer
     static Array powersOfTwo; // Stores 2^0, 2^1, 2^2,..., 2^(n-1)
+    static Array twoToThe;
 
     // Initializes the Math library.
     function void init() {
+      let twoToThe = Memory.alloc(16);
       return;
     }
 
@@ -23,8 +25,66 @@ class Math {
      *  in an expression, it handles it by invoking this method. 
      *  Thus, in Jack, x * y and Math.multiply(x,y) return the same value. */
     function int multiply(int x, int y) {
-      return 0;
+      var int sum, shiftedX, i;
+      let shiftedX = x;
+
+      do Math.convertToBin(y);
+
+      while(i < 16) {
+        if (Math.bit(i)) {
+          let sum = sum + shiftedX;
+        }
+        // やりたいことは2*shiftedXだが、multiplyの中でmultiplyを呼ぶとデバッグがカオスになりそうだったので加算にした。
+        let shiftedX = shiftedX + shiftedX;
+        let i = i + 1;
+      }
+
+      return sum;
     }
+
+    /** xの2進数で表現したときにi bit目が1かどうかを返す
+     * */
+    function boolean bit(int i) {
+      // twoToTheを利用してi bit目が1かどうかを返す
+      return twoToThe[i] = 1;
+    }
+
+    /** valueを2進数に変換しtwoToTheに格納する
+     * */
+    function void convertToBin(int value) {
+      var int mask, position;
+      var boolean loop;
+
+      let position = 0;
+      let loop = true;
+      while (loop) {
+        let mask = Math.nextMask(mask);
+
+        if (~(position > 16)) {
+          if (~((value & mask) = 0)) {
+            let twoToThe[position] = 1;
+          } else {
+            let twoToThe[position] = 0;
+          }    
+        } else {
+          let loop = false;
+        }
+
+        let position = position + 1;
+      }
+      return;
+    }
+
+    function int nextMask(int mask) {
+      if (mask = 0) {
+        return 1;
+      }
+      else {
+        // やりたいことは2*maskだが、multiplyの中でmultiplyを呼ぶとデバッグがカオスになりそうだったので加算にした。
+        return mask + mask;
+      }
+    }
+
 
     /** Returns the integer part of x / y.
      *  When a Jack compiler detects the division operator '/'
