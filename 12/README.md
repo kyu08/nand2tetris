@@ -1,5 +1,5 @@
 ## TODO
-- [ ] Memory
+- [x] Memory
 - [ ] Array
 - [ ] Math
 - [ ] String

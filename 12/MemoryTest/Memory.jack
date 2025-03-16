@@ -47,7 +47,7 @@ class Memory {
      *  a reference to its base address. */
     function int alloc(int size) {
       // targetAddress: メモリが確保できるか調査する対象ブロックの先頭アドレス
-      var int returnAddress, targetAddress, allocSize, afterSize, returnBlockStart, returnAddress;
+      var int returnAddress, targetAddress, allocSize, afterSize, returnBlockStart;
 
       // まだ初期化されていなければ初期化する
       if (freeList = 0) {
@@ -57,7 +57,7 @@ class Memory {
       let returnAddress = -1;
       let targetAddress = freeList;
 
-      while (~(targetAddress = 0) | (returnAddress = -1)) {
+      while ((targetAddress = freeList) | ~(memory[targetAddress + 1] = 0)) {
         // freeListから空きを探す(とりあえずシンプルに実装できそうなfirst-fitを採用する)
         if ((size < memory[targetAddress]) | (size = memory[targetAddress])) {
           let allocSize = size + 1; // メモリの長さを保持するために1ワード追加で必要
@@ -67,7 +67,7 @@ class Memory {
           let memory[returnBlockStart] = size;
           let returnAddress = returnBlockStart + 1;
 
-          // TODO: memory[targetAddress] == 0 だったら削除する
+          return returnAddress;
         } else {
           if (~(memory[targetAddress + 1] = 0)) { // 次が終端でなければ更新
             let targetAddress = memory[targetAddress + 1];
@@ -81,7 +81,17 @@ class Memory {
     /** De-allocates the given object (cast as an array) by making
      *  it available for future allocations. */
     function void deAlloc(Array o) {
-      // TODO: 実装する
+      var int i, startAddress, endAddress, size;
+
+      let startAddress = o - 1;
+      let size = memory[startAddress];
+      let endAddress = startAddress + size - 1;
+      let i = startAddress + 1;
+
+      // 開放したメモリブロックをfreeListの末尾に追加する
+      let memory[freeList + 1] = startAddress;
+      let memory[i] = 0;
+      
       return;
     }
 }
