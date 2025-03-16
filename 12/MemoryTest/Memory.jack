@@ -1,0 +1,84 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Memory.jack
+/**
+ * This library provides two services: direct access to the computer's main
+ * memory (RAM), and allocation and recycling of memory blocks. The Hack RAM
+ * consists of 32,768 words, each holding a 16-bit binary number.
+ */
+class Memory {
+      static Array memory;
+      static int freeList;
+
+    /** Initializes the class. */
+    function void init() {
+      let memory = 0;  // ベースアドレス（配列として使用するため）
+      let freeList = 2048; // ヒープのスタートアドレス
+      
+      // メモリブロックは [サイズ, 次のブロックへのポインタ, データ領域...] という構造
+      let memory[freeList] = 14334; // 利用可能なメモリサイズ(16384-2048-2)
+      let memory[freeList+1] = 0;   // 次の空きブロックはない（リンクリストの終端）
+      
+      return;
+    }
+
+    /** Returns the RAM value at the given address. */
+    function int peek(int address) {
+      // まだ初期化されていなければ初期化する
+      if (freeList = 0) {
+        do Memory.init();
+      }
+      return memory[address];
+    }
+
+    /** Sets the RAM value at the given address to the given value. */
+    function void poke(int address, int value) {
+      // まだ初期化されていなければ初期化する
+      if (freeList = 0) {
+        do Memory.init();
+      }
+      let memory[address] = value;
+      return;
+    }
+
+    /** Finds an available RAM block of the given size and returns
+     *  a reference to its base address. */
+    function int alloc(int size) {
+      // targetAddress: メモリが確保できるか調査する対象ブロックの先頭アドレス
+      var int returnAddress, targetAddress,allocSize, afterSize, returnBlockStart, returnAddress;
+      let returnAddress = -1;
+      let targetAddress = freeList;
+
+      // まだ初期化されていなければ初期化する
+      if (freeList = 0) {
+        do Memory.init();
+      }
+
+      while (~(targetAddress = 0) & ~(returnAddress = -1)) {
+        // freeListから空きを探す(とりあえずシンプルに実装できそうなfirst-fitを採用する)
+        if (size < memory[targetAddress] | size = memory[targetAddress]) {
+          // NOTE: とりあえず例に習って切り出し元ブロックの後ろに寄せて確保する方式にした。実装を進める中でやりずらさがあったら変更を検討する。
+          let allocSize = size + 1; // メモリの長さを保持するために1ワード追加で必要
+          let afterSize = memory[targetAddress] - allocSize; // 切り出し元の切り出し後のサイズ
+          let memory[targetAddress] = afterSize; // 確保したメモリ分を削除
+          let returnBlockStart = targetAddress + afterSize;
+          let memory[returnBlockStart] = size;
+          let returnAddress = returnBlockStart + 1;
+
+          // TODO: memory[targetAddress] == 0 だったら削除する
+        } else {
+          let targetAddress = memory[targetAddress + 1];
+        }
+        // freeListに空きがあれば切り出して割当先アドレスを取得 & 切り出した領域をfreeListから削除
+      }
+      return returnAddress;
+    }
+
+    /** De-allocates the given object (cast as an array) by making
+     *  it available for future allocations. */
+    function void deAlloc(Array o) {
+      // TODO: 実装する
+      return;
+    }
+}
