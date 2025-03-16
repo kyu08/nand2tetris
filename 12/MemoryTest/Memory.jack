@@ -47,15 +47,17 @@ class Memory {
     function int alloc(int size) {
       // targetAddress: メモリが確保できるか調査する対象ブロックの先頭アドレス
       var int returnAddress, targetAddress,allocSize, afterSize, returnBlockStart, returnAddress;
-      let returnAddress = -1;
-      let targetAddress = freeList;
 
       // まだ初期化されていなければ初期化する
       if (freeList = 0) {
         do Memory.init();
       }
 
-      while (~(targetAddress = 0) & ~(returnAddress = -1)) {
+      let returnAddress = -1;
+      let targetAddress = freeList;
+
+      while (~(targetAddress = 0) | (returnAddress = -1)) {
+        do Output.printInt(0);
         // freeListから空きを探す(とりあえずシンプルに実装できそうなfirst-fitを採用する)
         if (size < memory[targetAddress] | size = memory[targetAddress]) {
           // NOTE: とりあえず例に習って切り出し元ブロックの後ろに寄せて確保する方式にした。実装を進める中でやりずらさがあったら変更を検討する。
@@ -69,9 +71,12 @@ class Memory {
           // TODO: memory[targetAddress] == 0 だったら削除する
         } else {
           let targetAddress = memory[targetAddress + 1];
+          // let targetAddress = memory[targetAddress + 1];
         }
         // freeListに空きがあれば切り出して割当先アドレスを取得 & 切り出した領域をfreeListから削除
       }
+      do Output.printInt(1);
+      do Output.printInt(returnAddress);
       return returnAddress;
     }
 
