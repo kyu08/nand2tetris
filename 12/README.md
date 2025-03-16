@@ -1,6 +1,6 @@
 ## TODO
 - [x] Memory
-- [ ] Array
+- [x] Array
 - [ ] Math
 - [ ] String
 - [ ] Output
