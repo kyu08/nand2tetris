@@ -58,7 +58,11 @@ class Math {
       let position = 0;
       let loop = true;
       while (loop) {
-        let mask = Math.nextMask(mask);
+        if (mask = 0) {
+          let mask = 1;
+        } else {
+          let mask = mask + mask;
+        }
 
         if (~(position > 16)) {
           if (~((value & mask) = 0)) {
@@ -75,23 +79,45 @@ class Math {
       return;
     }
 
-    function int nextMask(int mask) {
-      if (mask = 0) {
-        return 1;
-      }
-      else {
-        // やりたいことは2*maskだが、multiplyの中でmultiplyを呼ぶとデバッグがカオスになりそうだったので加算にした。
-        return mask + mask;
-      }
-    }
-
-
     /** Returns the integer part of x / y.
      *  When a Jack compiler detects the division operator '/'
      *  an an expression, it handles it by invoking this method.
      *  Thus, x/y and Math.divide(x,y) return the same value. */
     function int divide(int x, int y) {
-      return 0;
+      var int q, answer;
+      if (
+        ((x = 0) | (y = 0))
+        | ((x > 0) & (y > 0) & (x < y)) // xが正, yが正 -> x < yならば商は0
+        | ((x > 0) & (y < 0) & (x < -y)) // xが正, yが負 -> x < -yならば商は0
+        | ((x < 0) & (y < 0) & (-x < -y)) // xが負, yが負 -> -x < -yならば商は0
+        | ((x < 0) & (y > 0) & (-x < y)) // xが負, yが正 -> -x < yならば商は0
+      ) {
+        return 0;
+      }
+      let q = Math.divide(x, y + y);
+
+      if (x < 0) {
+        let x = -x;
+      }
+      if (y < 0) {
+        let y = -y;
+      }
+      if (q < 0) {
+        let q = -q;
+      }
+
+      if ((x -  ((q * y) + (q * y))) < y) {
+        let answer = q + q;
+      } else {
+        let answer = q + q + 1;
+      }
+
+      if ((x * y) < 0) {
+        let answer = -answer;
+
+      }
+
+      return answer;
     }
 
     /** Returns the integer part of the square root of x. */
