@@ -123,20 +123,23 @@ class Math {
     /** Returns the integer part of the square root of x. */
     // FIXME: Math.sqrt(9) == 362, Math.sqrt(32767) == 510になるので修正する
     function int sqrt(int x) {
-      var int j, y, temp;
-      let j = 8; // NOTE: jack OSではintの範囲は -2^8 ~ 2^8 -1
+      var int j, answer, temp;
+      var String str;
+      // NOTE: jack OSではintの範囲は -2^8 ~ 2^8 -1
       // 上位ビットから各bitを1にして2乗したときにxを超えなければ採用する
+      let j = 7;
+
       while (~(j = 0)) {
-        let temp = y + Math.twoToThePower(j);
+        let temp = answer + Math.twoToThePower(j);
 
         if ((temp*temp < x) | (temp*temp = x)) {
-          let y = temp;
+          let answer = temp;
         }
 
         let j = j -1;
       }
       
-      return y;
+      return answer;
     }
 
     // 2^j を計算（左シフト）
