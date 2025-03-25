@@ -1,0 +1,88 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/String.jack
+/**
+ * Represents character strings. In addition for constructing and disposing
+ * strings, the class features methods for getting and setting individual
+ * characters of the string, for erasing the string's last character,
+ * for appending a character to the string's end, and more typical
+ * string-oriented operations.
+ */
+class String {
+    // startAddrは文字列の開始位置を表す
+    // 内部的にはcharの配列を持つ。
+    // capは文字列のキャパシティを表す
+    field int startAddr, cap;
+
+    /** constructs a new empty string with a maximum length of maxLength
+     *  and initial length of 0. */
+    constructor String new(int maxLength) {
+      var int addr;
+      let addr = Memory.alloc(maxLength);
+      let startAddr = addr;
+      let cap = maxLength;
+
+      return this;
+    }
+
+    /** Disposes this string. */
+    method void dispose() {
+      return;
+    }
+
+    /** Returns the current length of this string. */
+    method int length() {
+      return cap;
+    }
+
+    /** Returns the character at the j-th location of this string. */
+    method char charAt(int j) {
+      return 0;
+    }
+
+    /** Sets the character at the j-th location of this string to c. */
+    method void setCharAt(int j, char c) {
+      return;
+    }
+
+    /** Appends c to this string's end and returns this string. */
+    method String appendChar(char c) {
+      // TODO: これ実装したらテスト実行する
+      let cap = cap + 1;
+      // TODO: charをintに変換する
+      // TODO: ケツにcharをpushする
+      return this;
+    }
+
+    /** Erases the last character from this string. */
+    method void eraseLastChar() {
+      return;
+    }
+
+    /** Returns the integer value of this string, 
+     *  until a non-digit character is detected. */
+    method int intValue() {
+      return 0;
+    }
+
+    /** Sets this string to hold a representation of the given value. */
+    method void setInt(int val) {
+      return;
+    }
+
+    /** Returns the new line character. */
+    function char newLine() {
+      return 0;
+    }
+
+    /** Returns the backspace character. */
+    function char backSpace() {
+      return 8;
+    }
+
+    /** Returns the double quote (") character. */
+    function char doubleQuote() {
+      return 22;
+    }
+}
