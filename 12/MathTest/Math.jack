@@ -159,12 +159,20 @@ class Math {
 
     /** Returns the greater value. */
     function int max(int a, int b) {
-      return 0;
+      if (a < b) {
+        return b;
+      } else {
+        return a;
+      }
     }
 
     /** Returns the smaller value. */
     function int min(int a, int b) {
-      return 0;
+      if (a < b) {
+        return a;
+      } else {
+        return b;
+      }
     }
 
     /** Returns the absolute value of x. */
