@@ -177,6 +177,10 @@ class Math {
 
     /** Returns the absolute value of x. */
     function int abs(int x) {
-      return 0;
+      if (0 < x) {
+        return x;
+      } else {
+        return -x;
+      }
     }
 }

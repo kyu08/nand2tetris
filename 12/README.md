@@ -1,13 +1,13 @@
 ## TODO
 - [x] Memory
 - [x] Array
-- [ ] Math
+- [x] Math
     - [x] multiply
-    - [ ] divide
-    - [ ] sqrt
-    - [ ] min
-    - [ ] max
-    - [ ] abs
+    - [x] divide
+    - [x] sqrt
+    - [x] min
+    - [x] max
+    - [x] abs
 - [ ] String
 - [ ] Output
 - [ ] Screen
