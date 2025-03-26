@@ -12,8 +12,8 @@
 class String {
     // startAddrは文字列の開始位置を表す
     // 内部的にはcharの配列を持つ。
-    // capは文字列のキャパシティを表す
-    field int startAddr, cap;
+    // lengthは文字列の長さを、capは文字列のキャパシティを表す
+    field int startAddr, length, cap;
 
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
@@ -28,30 +28,39 @@ class String {
 
     /** Disposes this string. */
     method void dispose() {
+      let length = 0;
+      let cap = 0;
+      do Memory.deAlloc(startAddr);
       return;
     }
 
     /** Returns the current length of this string. */
     method int length() {
-      return cap;
+      return length;
     }
 
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
-      return 0;
+      return Memory.peek(startAddr+j);
     }
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
-      return;
+      return Memory.poke(startAddr+j, c);
     }
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
-      // TODO: これ実装したらテスト実行する
-      let cap = cap + 1;
-      // TODO: charをintに変換する
-      // TODO: ケツにcharをpushする
+      // maxLengthを超過する前に1増やす
+      if (length = cap) {
+        let cap = cap + 1;
+        let startAddr = Memory.alloc(cap);
+      }
+
+      // 末尾にcharを追加
+      do Memory.poke(startAddr+length, c);
+      let length = length + 1;
+
       return this;
     }
 
