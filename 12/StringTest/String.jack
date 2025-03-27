@@ -66,17 +66,25 @@ class String {
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
+      // TODO: 実装する
       return;
     }
 
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+      // TODO: char-codeを実際の整数値に変換して返す
+      // P334を参考に進めるとよさそう
       return 0;
     }
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
+      // TODO: 実装する
+      // 1. 整数が負数かどうかチェック（負数なら '-' 文字を追加）
+      // 2. 整数の各桁を抽出（例：123 → 1, 2, 3）
+      // 3. 各桁を対応する文字コードに変換（数字 n → 文字コード '0'+n）
+      // 4. それらをStringオブジェクトのフィールドに格納
       return;
     }
 
