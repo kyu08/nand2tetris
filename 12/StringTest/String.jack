@@ -64,10 +64,18 @@ class String {
 
     /** Appends c to this string's end and returns this string. */
     method String appendChar(char c) {
-      // maxLengthを超過する前に1増やす
-      if (length = cap) {
-        let cap = cap + 1;
+      var int i, newCap;
+      // capを超過する前に1増やす
+      if ((length = cap) | (length > cap)) {
+        let newCap = cap + 1;
+        let cap = newCap;
         let startAddr = Memory.alloc(cap);
+
+        let i = 0;
+        while (i < length) {
+          do Memory.poke(startAddr + i, charAt(i));
+          let i = i + 1;
+        }
       }
 
       // 末尾にcharを追加
