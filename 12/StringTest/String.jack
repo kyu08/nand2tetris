@@ -18,10 +18,8 @@ class String {
     /** constructs a new empty string with a maximum length of maxLength
      *  and initial length of 0. */
     constructor String new(int maxLength) {
-      var int addr;
       if (0 < maxLength) {
-        let addr = Memory.alloc(maxLength);
-        let startAddr = addr;
+        let startAddr = Memory.alloc(maxLength);
       }
       let cap = maxLength;
 
@@ -30,6 +28,10 @@ class String {
 
     /** Disposes this string. */
     method void dispose() {
+      if (startAddr = 0) {
+        return;
+      }
+
       let length = 0;
       let cap = 0;
       do Memory.deAlloc(startAddr);
@@ -41,6 +43,14 @@ class String {
       return length;
     }
 
+    method int startAddr() {
+      return startAddr;
+    }
+
+    method int cap() {
+      return cap;
+    }
+
     /** Returns the character at the j-th location of this string. */
     method char charAt(int j) {
       return Memory.peek(startAddr+j);
@@ -48,7 +58,8 @@ class String {
 
     /** Sets the character at the j-th location of this string to c. */
     method void setCharAt(int j, char c) {
-      return Memory.poke(startAddr+j, c);
+      do Memory.poke(startAddr+j, c);
+      return;
     }
 
     /** Appends c to this string's end and returns this string. */
@@ -66,9 +77,6 @@ class String {
       return this;
     }
 
-    未実装の関数たちを実装するところから
-
-
     /** Erases the last character from this string. */
     method void eraseLastChar() {
       // TODO: 実装する
@@ -78,6 +86,7 @@ class String {
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
+      var int val, i, d;
       let val = 0;
       let i = 0;
 
@@ -99,7 +108,13 @@ class String {
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
-      let this = int2String(val);
+      var String temp;
+      let temp = Math.int2String(val);
+
+      let startAddr = temp.startAddr();
+      let length = temp.length();
+      let cap = temp.cap();
+
       return;
     }
 
@@ -118,21 +133,24 @@ class String {
       return 34;
     }
 
-    function int reminder(int x, y) {
+    function int reminder(int x, int y) {
       // 商
       var int quotient;
       let quotient = x/y;
       return x - quotient*y;
     }
 
-    method String int2String(int val) {
+    function String int2String(int val) {
+      var int lastDigit, c;
+      var String temp;
       let lastDigit = Math.reminder(val, 10);
       let c = lastDigit + 48;
 
       if (val < 10) {
         return c;
       } else {
-        return Math.int2String(val/10).appendChar(c);
+        let temp = Math.int2String(val/10);
+        return temp.appendChar(c);
       }
     }
 }
