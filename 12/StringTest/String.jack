@@ -147,7 +147,7 @@ class String {
       // 商
       var int quotient;
       let quotient = x/y;
-      return x - quotient*y;
+      return x - (quotient*y);
     }
 
     function String int2String(int val) {
