@@ -129,37 +129,11 @@ class String {
       var String temp;
       var int i;
       
-      // 元のメモリを解放
-      do dispose();
+      let length = 0;
       
       // 新しい数値文字列を作成
-      let temp = String.int2String(val);
+      do int2String(val);
 
-      // do Output.println();
-      // do Output.printString("---String.int2String");
-      // do Output.printString("startAddr: ");
-      // do Output.printInt(temp.startAddr());
-      // do Output.printString("length: ");
-      // do Output.printInt(temp.length());
-      // do Output.printString("cap: ");
-      // do Output.printInt(temp.cap());
-      // do Output.println();
-      
-      // 新しいメモリを確保し、値をコピー
-      let cap = temp.length();
-      let startAddr = Memory.alloc(cap);
-      let length = temp.length();
-      
-      // temp文字列の各文字をこの文字列にコピー
-      let i = 0;
-      while (i < length) {
-        do Memory.poke(startAddr + i, temp.charAt(i));
-        let i = i + 1;
-      }
-      
-      // 一時文字列を解放
-      do temp.dispose();
-      
       return;
     }
 
@@ -185,50 +159,20 @@ class String {
       return x - (quotient*y);
     }
 
-    function String int2String(int val) {
+    method void int2String(int val) {
       var int lastDigit, c;
       var String temp;
-      var String d;
-
+      
+      // 最後の桁を取得
       let lastDigit = String.reminder(val, 10);
-      let c = lastDigit + 48;
-
-      do Output.println();
-      do Output.printString("---int2String");
-      do Output.printString("val:");
-      do Output.printInt(val);
-      do Output.printString(", lastDigit:");
-      do Output.printInt(lastDigit);
-      do Output.printString(", c:");
-      do Output.printInt(c);
-      do Output.println();
-
-
+      let c = lastDigit + 48;  // ASCII変換
+      
       if (val < 10) {
-        let temp = String.new(1);
-        let temp = temp.appendChar(c);
-        do temp.debug();
-        return temp;
+        do appendChar(c);
       } else {
-        let temp = String.int2String(val/10);
-        let temp = temp.appendChar(c);
-        do temp.debug();
-        return temp;
+        do int2String(val/10);
+        do appendChar(c);
       }
-    }
-
-    method void debug() {
-      var int i;
-      // do Output.println();
-      // do Output.printString("---");
-      // do Output.printInt(startAddr());
-      // do Output.println();
-      // while (i < length()) {
-      //   do Output.printChar(charAt(i));
-      //   let i = i + 1;
-      // }
-      // do Output.printString("---");
-      // do Output.println();
       return;
     }
 }
