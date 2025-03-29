@@ -162,6 +162,11 @@ class String {
     method void int2String(int val) {
       var int lastDigit, c;
       var String temp;
+
+      if ((val < 0) & (length = 0)) {
+        do appendChar(45);
+        let val = -val;
+      }
       
       // 最後の桁を取得
       let lastDigit = String.reminder(val, 10);
