@@ -8,7 +8,7 @@
     - [x] min
     - [x] max
     - [x] abs
-- [ ] String
+- [x] String
 - [ ] Output
 - [ ] Screen
 - [ ] Keyboard
