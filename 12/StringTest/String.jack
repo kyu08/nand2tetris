@@ -119,7 +119,14 @@ class String {
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
       var String temp;
+      do dispose();
+
       let temp = String.int2String(val);
+      do Output.printString("(");
+      do Output.printInt(temp.startAddr()); // Memory[2127] => 0
+      // do Output.printInt(temp.length()); // Memory[2127] => 0
+      // do Output.printInt(temp.cap()); // Memory[2127] => 0
+      do Output.printString(")");
 
       let startAddr = temp.startAddr();
       let length = temp.length();
@@ -153,16 +160,47 @@ class String {
     function String int2String(int val) {
       var int lastDigit, c;
       var String temp;
+      var String d;
+
       let lastDigit = String.reminder(val, 10);
       let c = lastDigit + 48;
 
+      do Output.println();
+      do Output.printString("---int2String");
+      do Output.printString("val:");
+      do Output.printInt(val);
+      do Output.printString(", lastDigit:");
+      do Output.printInt(lastDigit);
+      do Output.printString(", c:");
+      do Output.printInt(c);
+      do Output.println();
+
+
       if (val < 10) {
         let temp = String.new(1);
-        do temp.appendChar(c);
+        let temp = temp.appendChar(c);
+        do temp.debug();
         return temp;
       } else {
         let temp = String.int2String(val/10);
-        return temp.appendChar(c);
+        let temp = temp.appendChar(c);
+        do temp.debug();
+        return temp;
       }
+    }
+
+    method void debug() {
+      var int i;
+      // do Output.println();
+      // do Output.printString("---");
+      // do Output.printInt(startAddr());
+      // do Output.println();
+      // while (i < length()) {
+      //   do Output.printChar(charAt(i));
+      //   let i = i + 1;
+      // }
+      // do Output.printString("---");
+      // do Output.println();
+      return;
     }
 }
