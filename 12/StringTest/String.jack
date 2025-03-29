@@ -91,9 +91,16 @@ class String {
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
-      var int val, i, d;
+      var int val, i, d, sign;
       let val = 0;
       let i = 0;
+      let sign = 1;
+      
+      // 先頭が'-'の場合は負の数
+      if ((length() > 0) & (charAt(0) = 45)) {
+        let sign = -1;
+        let i = 1;  // '-'をスキップ
+      }
 
       while (i < length()) {
         let d = charAt(i) - 48;
@@ -101,15 +108,13 @@ class String {
           let val = val*10 + d;
         } else {
           // 整数に変換できなくなった時点でvalを返す
-          return val;
+          return val * sign;
         }
         let i = i + 1;
       }
       
-      return val;
+      return val * sign;
     }
-
-    // NOTE(あとでけす): あくまで整数値 <-> 整数値の文字コード間の変換を行うだけで"a"みたいな文字列と文字コード間の変換の実装は不要（勘違いしていた）
 
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
