@@ -147,7 +147,9 @@ class String {
       let c = lastDigit + 48;
 
       if (val < 10) {
-        return c;
+        let temp = String.new(1);
+        do temp.appendChar(c);
+        return temp;
       } else {
         let temp = String.int2String(val/10);
         return temp.appendChar(c);
