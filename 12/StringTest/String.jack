@@ -76,9 +76,21 @@ class String {
     /** Returns the integer value of this string, 
      *  until a non-digit character is detected. */
     method int intValue() {
-      // TODO: char-codeを実際の整数値に変換して返す
-      // P334を参考に進めるとよさそう
-      return 0;
+      let val = 0;
+      let i = 0;
+
+      while (i < length()) {
+        let d = charAt(i) - 48;
+        if ((-1 < d) & (d < 10)) {
+          let val = val*10 + d;
+        } else {
+          // 整数に変換できなくなった時点でvalを返す
+          return val;
+        }
+        let i = i + 1;
+      }
+      
+      return val;
     }
 
     // NOTE(あとでけす): あくまで整数値 <-> 整数値の文字コード間の変換を行うだけで"a"みたいな文字列と文字コード間の変換の実装は不要（勘違いしていた）
