@@ -79,7 +79,12 @@ class String {
 
     /** Erases the last character from this string. */
     method void eraseLastChar() {
-      // TODO: 実装する
+      if (length = 0) {
+        return;
+      }
+
+      do Memory.poke(startAddr+length-1, 0);
+      let length = length - 1;
       return;
     }
 
