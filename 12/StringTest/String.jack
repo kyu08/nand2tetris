@@ -64,6 +64,9 @@ class String {
       return this;
     }
 
+    未実装の関数たちを実装するところから
+
+
     /** Erases the last character from this string. */
     method void eraseLastChar() {
       // TODO: 実装する
@@ -78,13 +81,11 @@ class String {
       return 0;
     }
 
+    // NOTE(あとでけす): あくまで整数値 <-> 整数値の文字コード間の変換を行うだけで"a"みたいな文字列と文字コード間の変換の実装は不要（勘違いしていた）
+
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
-      // TODO: 実装する
-      // 1. 整数が負数かどうかチェック（負数なら '-' 文字を追加）
-      // 2. 整数の各桁を抽出（例：123 → 1, 2, 3）
-      // 3. 各桁を対応する文字コードに変換（数字 n → 文字コード '0'+n）
-      // 4. それらをStringオブジェクトのフィールドに格納
+      let this = int2String(val);
       return;
     }
 
@@ -101,5 +102,23 @@ class String {
     /** Returns the double quote (") character. */
     function char doubleQuote() {
       return 34;
+    }
+
+    function int reminder(int x, y) {
+      // 商
+      var int quotient;
+      let quotient = x/y;
+      return x - quotient*y;
+    }
+
+    method String int2String(int val) {
+      let lastDigit = Math.reminder(val, 10);
+      let c = lastDigit + 48;
+
+      if (val < 10) {
+        return c;
+      } else {
+        return Math.int2String(val/10).appendChar(c);
+      }
     }
 }
