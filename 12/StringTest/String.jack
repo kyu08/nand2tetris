@@ -109,7 +109,7 @@ class String {
     /** Sets this string to hold a representation of the given value. */
     method void setInt(int val) {
       var String temp;
-      let temp = Math.int2String(val);
+      let temp = String.int2String(val);
 
       let startAddr = temp.startAddr();
       let length = temp.length();
@@ -143,13 +143,13 @@ class String {
     function String int2String(int val) {
       var int lastDigit, c;
       var String temp;
-      let lastDigit = Math.reminder(val, 10);
+      let lastDigit = String.reminder(val, 10);
       let c = lastDigit + 48;
 
       if (val < 10) {
         return c;
       } else {
-        let temp = Math.int2String(val/10);
+        let temp = String.int2String(val/10);
         return temp.appendChar(c);
       }
     }
