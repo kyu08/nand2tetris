@@ -10,6 +10,14 @@
     - [x] abs
 - [x] String
 - [ ] Output
+    - [ ] `A`が正しくprintできる
+        - [x] `A`のbit mapを定義
+        - [ ] `printChar`を実装
+    - [ ] `moveCursor`を実装
+    - [ ] `printString`を実装
+    - [ ] `printInt`を実装
+    - [ ] `println`を実装
+    - [ ] `backSpace`を実装
 - [ ] Screen
 - [ ] Keyboard
 - [ ] Sys
