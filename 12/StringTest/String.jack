@@ -19,8 +19,10 @@ class String {
      *  and initial length of 0. */
     constructor String new(int maxLength) {
       var int addr;
-      let addr = Memory.alloc(maxLength);
-      let startAddr = addr;
+      if (0 < maxLength) {
+        let addr = Memory.alloc(maxLength);
+        let startAddr = addr;
+      }
       let cap = maxLength;
 
       return this;
