@@ -232,7 +232,8 @@ class Output {
 
     // x, y, iからbitMap書き込み先のアドレスを取得
     function int getRenderTargetAddr(int i) {
-      return (x + ((y + i) * 512)) / 16;
+      // 16384: SCREENのベースアドレス
+      return 16384 + ((x + ((y + i) * 512)) / 16);
     }
     function void renderCursor(boolean white) {
       var int targetAddr, i, val;
