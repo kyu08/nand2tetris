@@ -234,6 +234,30 @@ class Output {
     function int getRenderTargetAddr(int i) {
       return (x + ((y + i) * 512)) / 16;
     }
+    function void renderCursor(boolean white) {
+      var int targetAddr, i, val;
+
+      if (white) {
+        let val = 0;
+      } else {
+        // -1: 1111111111111111(2の補数表現なので)
+        let val = -1;
+      }
+
+      while (i < 11) {
+        let targetAddr = Output.getRenderTargetAddr(i);
+        do Memory.poke(targetAddr, val);
+
+        let i = i + 1;
+      }
+
+      return;
+    }
+    function void advanceCursor() {
+      let x = Output.nextX();
+      let y = Output.nextY();
+      return;
+    }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
@@ -246,8 +270,16 @@ class Output {
       // - 1行は512/16 = 32個の連続した16bitワードとして表現される
       // - 1文字の横幅は8pxなので1行には512/8 = 64文字入る
       // mapは[]intになっており0~11に各行のbit情報が格納されている。
+      if (charMaps = 0) {
+        do Output.init();
+      }
 
-      // TODO: output.moveCursor関数を使ってカーソルを1つ前に進める
+      // 現在のカーソル位置を真っ白にする
+      do Output.renderCursor(true);
+      // カーソル位置を更新する
+      do Output.advanceCursor();
+      // 現在のカーソル位置を真っ黒にする
+      do Output.renderCursor(false);
 
       // screenのカーソル位置に文字を書き込む
       let bitMap = Output.getMap(c);
