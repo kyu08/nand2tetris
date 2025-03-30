@@ -17,6 +17,9 @@ class Output {
 
     // Character map for displaying characters
     static Array charMaps; 
+    // カーソルが描画される領域の中でx, yがそれぞれ最小な点(つまり領域の左上)
+    // 0 <= x < 511, 0 <= y < 256
+    static int x, y;
 
     /** Initializes the screen, and locates the cursor at the screen's top-left. */
     function void init() {
@@ -189,14 +192,84 @@ class Output {
      *  and erases the character displayed there. */
     function void moveCursor(int i, int j) {
       // TODO: impl
+      // 始点は
+      // 0, 0
+      // 8, 0
+      // ...
+      // 56, 0
+      // 0, 11
       return;
+    }
+
+    // カーソルを1つ戻したときのx座標
+    function int prevX() {
+      if (x = 0) {
+        return 56;
+      }
+      return x - 8;
+    }
+    // カーソルを1つ戻したときのy座標
+    function int prevY() {
+      if (x = 0) {
+        return y - 11;
+      }
+      return y;
+    }
+    // カーソルを1つ進めたときのx座標
+    function int nextX() {
+      if (x = 56) {
+        return 0;
+      }
+      return x + 8;
+    }
+    // カーソルを1つ進めたときのy座標
+    function int nextY() {
+      if (x = 56) {
+        return y + 11;
+      }
+      return y;
+    }
+
+    // x, y, iからbitMap書き込み先のアドレスを取得
+    function int getRenderTargetAddr(int i) {
+      return (x + ((y + i) * 512)) / 16;
     }
 
     /** Displays the given character at the cursor location,
      *  and advances the cursor one column forward. */
     function void printChar(char c) {
-      let map = Output.getMap(c);
-      // TODO: impl
+      var boolean shouldShift;
+      var int targetAddr, i, quotient, shifted;
+      var Array bitMap;
+      // - SCREENはMemory[16384]から始まる
+      // - 横512px, 縦256px
+      // - 1行は512/16 = 32個の連続した16bitワードとして表現される
+      // - 1文字の横幅は8pxなので1行には512/8 = 64文字入る
+      // mapは[]intになっており0~11に各行のbit情報が格納されている。
+
+      // TODO: output.moveCursor関数を使ってカーソルを1つ前に進める
+
+      // screenのカーソル位置に文字を書き込む
+      let bitMap = Output.getMap(c);
+      while (i < 11) {
+        let targetAddr = Output.getRenderTargetAddr(i);
+
+        // ワードの9bit目~16bit目に書き込むかどうか
+        // xが16の倍数でないときはshiftが必要といえる
+        let quotient = Output.prevX() / 16;
+        let shouldShift = ~((quotient * 16) = Output.prevX());
+
+        // shouldShiftのときはshiftしてから加算する
+        if (shouldShift) {
+          let shifted = bitMap[i]*256; // 2bit shiftを8回
+          do Memory.poke(targetAddr, Memory.peek(targetAddr)+shifted);
+        } else { // !shouldShiftのときはそのまま加算する
+          do Memory.poke(targetAddr, bitMap[i]);
+        }
+
+        let i = i + 1;
+      }
+
       return;
     }
 
