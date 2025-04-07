@@ -264,6 +264,8 @@ class Output {
         if (shouldShift) {
         // 0100100011011010
         // 00000000xxxxxxxx
+
+          // FIXME: printCharを二回連続で呼ぶとバグるので修正するところから
           let shifted = Memory.peek(targetAddr) + (val*256); // 2bit shiftを8回
           do Memory.poke(targetAddr, shifted);
         } else { // !shouldShiftのときはそのまま加算する
@@ -298,10 +300,12 @@ class Output {
 
       // 現在のカーソル位置を真っ白にする
       do Output.renderCursor(true);
+      // FIXME: 9bit ~ 16bit目だけを白くする処理ができていないので修正する
 
       // screenのカーソル位置に文字を書き込む
       let bitMap = Output.getMap(c);
-      while (i < 11) {
+      // while (i < 11) {
+      while (~( x = 8) & (i < 11)) {
         let targetAddr = Output.getRenderTargetAddr(i);
 
         // ワードの9bit目~16bit目に書き込むかどうか
