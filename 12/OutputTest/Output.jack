@@ -237,41 +237,40 @@ class Output {
       return 16384 + ((x + ((y + i) * 512)) / 16);
     }
     function void renderCursor(boolean white) {
-      var int targetAddr, i, val;
+      var int targetAddr, i, targetVal, upper8Bit, lower8Bit;
 
       // 関数化したら消す
       var int quotient, shifted;
-      var boolean shouldShift;
-
-      if (white) {
-        let val = 0;
-      } else {
-        // -1: 0000000011111111(2の補数表現なので)
-        let val = 255;
-      }
+      var boolean whiteToUpper8Bit;
 
       while (i < 11) {
         let targetAddr = Output.getRenderTargetAddr(i);
 
         // ワードの9bit目~16bit目に書き込むかどうか
-        // xが16の倍数でないときはshiftが必要といえる
+        // xが16の倍数でないときかどうかで判定できる
         let quotient = x / 16;
-        // let quotient = Output.prevX() / 16;
-        let shouldShift = ~((quotient * 16) = x);
-        // let shouldShift = ~((quotient * 16) = Output.prevX());
+        let whiteToUpper8Bit = ~((quotient * 16) = x);
 
-        // shouldShiftのときはshiftしてから加算する
-        if (shouldShift) {
-        // 0100100011011010
-        // 00000000xxxxxxxx
-
-          // FIXME: printCharを二回連続で呼ぶとバグるので修正するところから
-          let shifted = Memory.peek(targetAddr) + (val*256); // 2bit shiftを8回
-          do Memory.poke(targetAddr, shifted);
-        } else { // !shouldShiftのときはそのまま加算する
-          do Memory.poke(targetAddr, val);
+        let targetVal = Memory.peek(targetAddr);
+        if (whiteToUpper8Bit) {
+          // 上位ビット && white: 上位ビットを取得して引く
+          // 上位ビット && black: 上位ビットを取得して引き1111111100000000を加算する
+          let upper8Bit = targetVal & (-256); // 1111111100000000
+          let targetVal = targetVal - upper8Bit;
+          if (~white) {
+            let targetVal = targetVal + (-256);
+          }
+        } else {
+          // 下位ビット && white: 下位ビットを取得して引く
+          // 下位ビット && black: 下位ビットを取得して引き0000000011111111を加算する
+          let lower8Bit = targetVal & 255; // 0000000011111111
+          let targetVal = targetVal - lower8Bit;
+          if (~white) {
+            let targetVal = targetVal + 255;
+          }
         }
 
+        do Memory.poke(targetAddr, targetVal);
         let i = i + 1;
       }
 
@@ -300,12 +299,10 @@ class Output {
 
       // 現在のカーソル位置を真っ白にする
       do Output.renderCursor(true);
-      // FIXME: 9bit ~ 16bit目だけを白くする処理ができていないので修正する
 
       // screenのカーソル位置に文字を書き込む
       let bitMap = Output.getMap(c);
-      // while (i < 11) {
-      while (~( x = 8) & (i < 11)) {
+      while (i < 11) {
         let targetAddr = Output.getRenderTargetAddr(i);
 
         // ワードの9bit目~16bit目に書き込むかどうか

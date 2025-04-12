@@ -10,9 +10,9 @@
     - [x] abs
 - [x] String
 - [ ] Output
-    - [ ] `A`が正しくprintできる
+    - [x] `A`が正しくprintできる
         - [x] `A`のbit mapを定義
-        - [ ] `printChar`を実装
+        - [x] `printChar`を実装
     - [ ] `moveCursor`を実装
     - [ ] `printString`を実装
     - [ ] `printInt`を実装
