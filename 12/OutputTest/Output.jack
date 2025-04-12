@@ -86,7 +86,7 @@ class Output {
 // 8 ##   ##
 // 9 ##   ##
 // 10
-        do Output.create(65,26,60,126,99,99,126,126,99,99,99,0);// A ** TO BE FILLED **
+        do Output.create(65,28,62,127,99,99,127,127,99,99,99,0);// A ** TO BE FILLED **
 
         do Output.create(66,31,51,51,51,31,51,51,51,31,0,0); // B
         do Output.create(67,28,54,35,3,3,3,35,54,28,0,0);    // C
