@@ -196,12 +196,9 @@ class Output {
       // 現在のカーソルを削除する
       do Output.renderCursor(true);
       // 移動後の位置にカーソルを描画する
-      let j = j * 8;
-      let i = i * 11;
-      let x = j;
-      let y = i;
+      let x = j * 8;
+      let y = i * 11;
       do Output.renderCursor(false);
-      // jは8の倍数になるはずなのになぜ呼び出し側でOutput.moveCursor(22, 63)とかOutput.moveCursor(0, 63)とか8の倍数でない値が渡されているんだろう
 
       // 始点は
       // 0, 0
@@ -258,7 +255,9 @@ class Output {
     // x, y, iからbitMap書き込み先のアドレスを取得
     function int getRenderTargetAddr(int i) {
       // 16384: SCREENのベースアドレス
-      return 16384 + ((x + ((y + i) * 512)) / 16);
+      // NOTE: `return 16384 + ((x + ((y + i) * 512)) / 16);`としてしまうとx,y,i
+      // の値によってはオーバーフローしてしまうので注意(1ワードが16bitで2の補数表現を使って正負の整数を表現しているので上限値は2^15)
+      return 16384 + (((y + i) * 32) + (x / 16));
     }
 
     function void renderCursor(boolean white) {
@@ -266,7 +265,7 @@ class Output {
 
       // 関数化したら消す
       var int quotient, shifted;
-      var boolean whiteToUpper8Bit;
+      var boolean writeToUpper8Bit;
 
       while (i < 11) {
         let targetAddr = Output.getRenderTargetAddr(i);
@@ -274,10 +273,10 @@ class Output {
         // ワードの9bit目~16bit目に書き込むかどうか
         // xが16の倍数でないときかどうかで判定できる
         let quotient = x / 16;
-        let whiteToUpper8Bit = ~((quotient * 16) = x);
+        let writeToUpper8Bit = ~((quotient * 16) = x);
 
         let targetVal = Memory.peek(targetAddr);
-        if (whiteToUpper8Bit) {
+        if (writeToUpper8Bit) {
           // 上位ビット && white: 上位ビットを取得して引く
           // 上位ビット && black: 上位ビットを取得して引き1111111100000000を加算する
           let upper8Bit = targetVal & (-256); // 1111111100000000
@@ -320,7 +319,8 @@ class Output {
       // - 横512px, 縦256px
       // - 1行は512/16 = 32個の連続した16bitワードとして表現される
       // - 1文字の横幅は8pxなので1行には512/8 = 64文字入る
-      // mapは[]intになっており0~11に各行のbit情報が格納されている。
+      // - mapは[]intになっており0~11に各行のbit情報が格納されている。
+      // - KBTはMemory[24576]から始まる
       if (charMaps = 0) {
         do Output.init();
       }
@@ -343,7 +343,7 @@ class Output {
           let shifted = bitMap[i]*256; // 2bit shiftを8回
           do Memory.poke(targetAddr, Memory.peek(targetAddr)+shifted);
         } else { // !shouldShiftのときはそのまま加算する
-          do Memory.poke(targetAddr, bitMap[i]);
+          do Memory.poke(targetAddr, Memory.peek(targetAddr)+bitMap[i]);
         }
 
         let i = i + 1;
