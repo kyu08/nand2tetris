@@ -378,7 +378,10 @@ class Output {
 
     /** Advances the cursor to the beginning of the next line. */
     function void println() {
-      // TODO: impl
+      do Output.renderCursor(true);
+      let x = 0;
+      let y = y + 11;
+      do Output.renderCursor(false);
       return;
     }
 
