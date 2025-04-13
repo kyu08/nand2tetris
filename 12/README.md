@@ -13,7 +13,7 @@
     - [x] `A`が正しくprintできる
         - [x] `A`のbit mapを定義
         - [x] `printChar`を実装
-    - [ ] `moveCursor`を実装
+    - [x] `moveCursor`を実装
     - [ ] `printString`を実装
     - [ ] `printInt`を実装
     - [ ] `println`を実装
