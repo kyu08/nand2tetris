@@ -14,7 +14,7 @@
         - [x] `A`のbit mapを定義
         - [x] `printChar`を実装
     - [x] `moveCursor`を実装
-    - [ ] `printString`を実装
+    - [x] `printString`を実装
     - [ ] `printInt`を実装
     - [ ] `println`を実装
     - [ ] `backSpace`を実装
