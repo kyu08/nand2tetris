@@ -36,7 +36,7 @@ class Output {
         // Black square, used for displaying non-printable characters.
         do Output.create(0,63,63,63,63,63,63,63,63,63,0,0);
 
-        // Assigns the bitmap for each character in the charachter set.
+        // Assigns the bitmap for each character in the character set.
         // The first parameter is the character index, the next 11 numbers
         // are the values of each row in the frame that represents this character.
         do Output.create(32,0,0,0,0,0,0,0,0,0,0,0);          //
@@ -204,28 +204,39 @@ class Output {
 
     // カーソルを1つ戻したときのx座標
     function int prevX() {
+      if ((x = 0) & (y = 0)) {
+        return  0;
+      }
       if (x = 0) {
-        return 56;
+        return 8*63; // 64文字目のスタート位置
       }
       return x - 8;
     }
+
     // カーソルを1つ戻したときのy座標
-    function int prevY() {
-      if (x = 0) {
+    function int prevY(int xBeforeUpdate) {
+      if ((xBeforeUpdate = 0) & (y = 0)) {
+        return  0;
+      }
+      if (xBeforeUpdate = 0) {
         return y - 11;
       }
       return y;
     }
+
     // カーソルを1つ進めたときのx座標
     function int nextX() {
-      if (x = 56) {
+      // TODO: 右下までいったときのハンドリングを追加する
+      if ((x = (8*63)) | (x > (8*63))) {
         return 0;
       }
       return x + 8;
     }
+
     // カーソルを1つ進めたときのy座標
-    function int nextY() {
-      if (x = 56) {
+    function int nextY(int xBeforeUpdate) {
+      // TODO: 右下までいったときのハンドリングを追加する
+      if ((xBeforeUpdate = (8*63)) | (xBeforeUpdate > (8*63))) {
         return y + 11;
       }
       return y;
@@ -236,6 +247,7 @@ class Output {
       // 16384: SCREENのベースアドレス
       return 16384 + ((x + ((y + i) * 512)) / 16);
     }
+
     function void renderCursor(boolean white) {
       var int targetAddr, i, targetVal, upper8Bit, lower8Bit;
 
@@ -277,8 +289,11 @@ class Output {
       return;
     }
     function void advanceCursor() {
+      var int xBeforeUpdate;
+      let xBeforeUpdate = x;
+
       let x = Output.nextX();
-      let y = Output.nextY();
+      let y = Output.nextY(xBeforeUpdate);
       return;
     }
 
