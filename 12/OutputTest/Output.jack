@@ -190,9 +190,19 @@ class Output {
     }
 
     /** Moves the cursor to the j-th column of the i-th row,
-     *  and erases the character displayed there. */
+     *  and erases the character displayed there.
+     *  i, jは文字単位であることに注意 */
     function void moveCursor(int i, int j) {
-      // TODO: impl
+      // 現在のカーソルを削除する
+      do Output.renderCursor(true);
+      // 移動後の位置にカーソルを描画する
+      let j = j * 8;
+      let i = i * 11;
+      let x = j;
+      let y = i;
+      do Output.renderCursor(false);
+      // jは8の倍数になるはずなのになぜ呼び出し側でOutput.moveCursor(22, 63)とかOutput.moveCursor(0, 63)とか8の倍数でない値が渡されているんだろう
+
       // 始点は
       // 0, 0
       // 8, 0
@@ -204,10 +214,10 @@ class Output {
 
     // カーソルを1つ戻したときのx座標
     function int prevX() {
-      if ((x = 0) & (y = 0)) {
-        return  0;
-      }
       if (x = 0) {
+        if (y = 0) {
+          return  0;
+        }
         return 8*63; // 64文字目のスタート位置
       }
       return x - 8;
@@ -215,10 +225,10 @@ class Output {
 
     // カーソルを1つ戻したときのy座標
     function int prevY(int xBeforeUpdate) {
-      if ((xBeforeUpdate = 0) & (y = 0)) {
-        return  0;
-      }
       if (xBeforeUpdate = 0) {
+        if (y = 0) {
+          return  0;
+        }
         return y - 11;
       }
       return y;
@@ -226,7 +236,7 @@ class Output {
 
     // カーソルを1つ進めたときのx座標
     function int nextX() {
-      // TODO: 右下までいったときのハンドリングを追加する
+      // 右端に到達した時
       if ((x = (8*63)) | (x > (8*63))) {
         return 0;
       }
@@ -235,8 +245,11 @@ class Output {
 
     // カーソルを1つ進めたときのy座標
     function int nextY(int xBeforeUpdate) {
-      // TODO: 右下までいったときのハンドリングを追加する
       if ((xBeforeUpdate = (8*63)) | (xBeforeUpdate > (8*63))) {
+        // 右下に到達した時
+        if ((y = (22*11)) | (y > (22*11))) {
+          return 0;
+        }
         return y + 11;
       }
       return y;
