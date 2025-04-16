@@ -19,9 +19,9 @@
     - [x] `printInt`を実装
     - [x] `backSpace`を実装
 - [ ] Screen
-    - [ ] init
+    - [x] init
     - [ ] clearScreen
-    - [ ] setColor
+    - [x] setColor
     - [ ] drawPixel
     - [ ] drawLine
     - [ ] drawRectangle
