@@ -16,7 +16,7 @@
     - [x] `moveCursor`を実装
     - [x] `printString`を実装
     - [x] `println`を実装
-    - [ ] `printInt`を実装
+    - [x] `printInt`を実装
     - [ ] `backSpace`を実装
 - [ ] Screen
 - [ ] Keyboard

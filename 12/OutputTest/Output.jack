@@ -372,7 +372,17 @@ class Output {
     /** Displays the given integer starting at the cursor location,
      *  and advances the cursor appropriately. */
     function void printInt(int i) {
-      // TODO: impl
+      var int j;
+      var String s;
+      // ちゃんとやるなら桁数を計算してnewにわたす
+      let s = String.new(10);
+      do s.setInt(i);
+
+      while (j < s.length()) {
+        do Output.printChar(s.charAt(j));
+        let j = j + 1;
+      }
+
       return;
     }
 
