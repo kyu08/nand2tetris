@@ -22,7 +22,7 @@
     - [x] init
     - [ ] clearScreen
     - [x] setColor
-    - [ ] drawPixel
+    - [x] drawPixel
     - [ ] drawLine
     - [ ] drawRectangle
     - [ ] drawCircle
