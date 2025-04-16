@@ -19,5 +19,21 @@
     - [x] `printInt`を実装
     - [x] `backSpace`を実装
 - [ ] Screen
+    - [ ] init
+    - [ ] clearScreen
+    - [ ] setColor
+    - [ ] drawPixel
+    - [ ] drawLine
+    - [ ] drawRectangle
+    - [ ] drawCircle
 - [ ] Keyboard
+    - [ ] init
+    - [ ] keyPressed
+    - [ ] readChar
+    - [ ] readLine
+    - [ ] readInt
 - [ ] Sys
+    - [ ] init
+    - [ ] halt
+    - [ ] wait
+    - [ ] error
