@@ -397,7 +397,12 @@ class Output {
 
     /** Moves the cursor one column back. */
     function void backSpace() {
-      // TODO: impl
+      var int xBeforeUpdate;
+      let xBeforeUpdate = x;
+
+      do Output.renderCursor(true);
+      let x = Output.prevX();
+      let y = Output.prevY(xBeforeUpdate);
       return;
     }
 }
