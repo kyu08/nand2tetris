@@ -23,7 +23,7 @@
     - [ ] clearScreen
     - [x] setColor
     - [x] drawPixel
-    - [ ] drawLine
+    - [x] drawLine
     - [ ] drawRectangle
     - [ ] drawCircle
 - [ ] Keyboard

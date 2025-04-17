@@ -11,10 +11,12 @@
 class Screen {
     // false: white, true: black
     static boolean color;
+    static boolean init;
 
     /** Initializes the Screen. */
     function void init() {
       let color = true;
+      let init = true;
       return;
     }
 
@@ -34,6 +36,9 @@ class Screen {
     /** Draws the (x,y) pixel, using the current color. */
     function void drawPixel(int x, int y) {
       var int addr, index, value, baseValue, i;
+      if (~init) {
+        do Screen.init();
+      }
       let addr = 16384 + ((y * 32) + (x / 16));
       let index = x - ((x / 16) * 16);
       let value = Memory.peek(addr);
@@ -52,7 +57,39 @@ class Screen {
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
-      // TODO: impl
+      var int x, y, dx, dy, a, b, diff;
+      // validation
+      if (
+          (x1 < 0)
+          | (511 < x1)
+          | (x2 < 0)
+          | (511 < x2)
+          | (y1 < 0)
+          | (255 < y1)
+          | (y2 < 0)
+          | (255 < y2)
+      ) {
+        return;
+      }
+
+      let x = x1;
+      let y = y1;
+      let dx = x2 - x1;
+      let dy = y2 - y1;
+      let a = 0;
+      let b = 0;
+      let diff = 0;
+
+      while (((a = dx) | (a < dx)) | ((b = dy) | (b < dy))) {
+        do Screen.drawPixel(x + a, y + b);
+        if (diff < 0) {
+          let a = a + 1;
+          let diff = diff + dy;
+        } else {
+          let b = b + 1;
+          let diff = diff - dx;
+        }
+      }
       return;
     }
 
