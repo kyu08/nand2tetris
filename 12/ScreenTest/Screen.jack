@@ -79,8 +79,12 @@ class Screen {
       let a = 0;
       let b = 0;
       let diff = 0;
+      // fix: 280 90 280 220
+      // 垂直な線だと止まらない
 
-      while (((a = dx) | (a < dx)) | ((b = dy) | (b < dy))) {
+      // fix: ここを&にすると横の線が引けなくなって | にすると縦の線が引けなくなる
+      while (((a = dx) | (a < dx)) & ((b = dy) | (b < dy))) {
+      // while (((a = dx) | (a < dx)) | ((b = dy) | (b < dy))) {
         do Screen.drawPixel(x + a, y + b);
         if (diff < 0) {
           let a = a + 1;
@@ -96,7 +100,14 @@ class Screen {
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      *  and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
-      // TODO: impl
+      do Screen.drawLine(x1, y1, x2, y1);
+      // do Output.printInt(x1);
+      // do Output.printInt(y1);
+      // do Output.printInt(y2);
+      // 280 90 280 220
+      do Screen.drawLine(x1, y1, 280, y2);
+      do Screen.drawLine(x1, y2, x2, y2);
+      do Screen.drawLine(x2, y1, x2, y2);
       return;
     }
 
