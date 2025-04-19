@@ -83,15 +83,11 @@ class Screen {
       while (((a = dx) | (a < dx)) & ((b = dy) | (b < dy))) {
         do Screen.drawPixel(x + a, y + b);
         if (diff < 0) {
-          if (~(b = 0)) {
             let a = a + 1;
-          }
           let diff = diff + dy;
         } else {
-          // if (b < dy) {
-          if (~(a = 0)) {
-          // if ((b = dy) | (b < dy)) {
-          // if (((b = dy) | (b < dy)) & ~(diff = 0)) {
+          // NOTE: Lineが水平なときだけ1ループ目でここに入ってしまうので特殊ケースとしてハンドリングする必要がある
+          if (~((a = 0) & (dy = 0))) {
             let b = b + 1;
           }
           let diff = diff - dx;
