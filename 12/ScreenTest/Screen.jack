@@ -42,7 +42,6 @@ class Screen {
       let addr = 16384 + ((y * 32) + (x / 16));
       let index = x - ((x / 16) * 16);
       let value = Memory.peek(addr);
-      // TODO: これだとcolor: trueのときなのでwhiteのときも考慮する(clearScreenを実装したあとの方がよさそうなので今はスキップ)
       let baseValue = 1; // 0000000000000001
       while (i < index) {
         // index回左にshift
@@ -50,7 +49,15 @@ class Screen {
         let i = i + 1;
       }
 
-      do Memory.poke(addr, (value | baseValue));
+      if (color) { // 黒
+        do Memory.poke(addr, (value | baseValue));
+      } else { // 白
+        if ((value | baseValue) = value) { // index番目のbitが1だったので0にする必要がある
+        do Memory.poke(addr, (value - baseValue));
+        } else {
+          // index番目のbitがすでに0なので何もする必要がない
+        }
+      }
 
       return;
     }
