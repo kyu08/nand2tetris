@@ -99,10 +99,11 @@ class Screen {
     /** Draws a filled rectangle whose top left corner is (x1, y1)
      *  and bottom right corner is (x2,y2), using the current color. */
     function void drawRectangle(int x1, int y1, int x2, int y2) {
-      do Screen.drawLine(x2, y1, x2, y2); // 右
-      do Screen.drawLine(x1, y2, x2, y2); // 下
-      do Screen.drawLine(x1, y1, x2, y1); // 上
-      do Screen.drawLine(x1, y1, x1, y2); // 左
+      var int i;
+      while (i < (y2 - y1)) {
+        do Screen.drawLine(x1, y1+i, x2, y1+i);
+        let i = i + 1;
+      }
       return;
     }
 
