@@ -79,18 +79,16 @@ class Screen {
       let a = 0;
       let b = 0;
       let diff = 0;
-      // fix: 280 90 280 220
-      // 垂直な線だと止まらない
 
-      // fix: ここを&にすると横の線が引けなくなって | にすると縦の線が引けなくなる
       while (((a = dx) | (a < dx)) & ((b = dy) | (b < dy))) {
-      // while (((a = dx) | (a < dx)) | ((b = dy) | (b < dy))) {
         do Screen.drawPixel(x + a, y + b);
         if (diff < 0) {
           let a = a + 1;
           let diff = diff + dy;
         } else {
-          let b = b + 1;
+          if (b < dy) {
+            let b = b + 1;
+          }
           let diff = diff - dx;
         }
       }
