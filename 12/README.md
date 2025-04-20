@@ -20,7 +20,7 @@
     - [x] `backSpace`を実装
 - [ ] Screen
     - [x] init
-    - [ ] clearScreen
+    - [x] clearScreen
     - [x] setColor
     - [x] drawPixel
     - [x] drawLine

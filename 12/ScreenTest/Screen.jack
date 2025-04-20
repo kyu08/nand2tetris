@@ -22,7 +22,13 @@ class Screen {
 
     /** Erases the entire screen. */
     function void clearScreen() {
-      // TODO: impl
+      var int addr;
+      let addr = 16384;
+
+      while (addr < 24576) {
+        do Memory.poke(addr, 0);
+        let addr = addr + 1;
+      }
       return;
     }
 
