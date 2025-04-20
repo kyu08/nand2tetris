@@ -27,8 +27,8 @@
     - [x] drawRectangle
     - [x] drawCircle
 - [ ] Keyboard
-    - [ ] init
-    - [ ] keyPressed
+    - [x] init
+    - [x] keyPressed
     - [ ] readChar
     - [ ] readLine
     - [ ] readInt
