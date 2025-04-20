@@ -78,7 +78,6 @@ class Screen {
       ) {
         return;
       }
-      // TODO: 水平、垂直は特殊ケースとして扱ってもいいかも
 
       let x = x1;
       let y = y1;
@@ -88,28 +87,49 @@ class Screen {
       let b = 0;
       let diff = 0;
 
+      if (dy = 0) {
+        do Screen.drawHorizontalLine(x1, y1, Math.abs(x2 - x1));
+        return;
+      }
+      if (dx = 0) {
+        do Screen.drawVerticalLine(x1, y1, Math.abs((y2 - y1)));
+        return;
+      }
+
       while (((a = dx) | (a < dx)) & ((b = dy) | (b < Math.abs(dy)))) {
         do Screen.drawPixel(x + a, y + b);
         if (((dy > 0) & (diff < 0)) | ((dy < 0) & (diff > 0 ))) {
           let a = a + 1;
           let diff = diff + dy;
         } else {
-          // NOTE: Lineが水平なときだけ1ループ目でここに入ってしまうので特殊ケースとしてハンドリングする必要がある
-          if (~((a = 0) & (dy = 0))) {
-            if (dy > 0) {
-              let b = b + 1;
-            } else {
-              let b = b - 1;
-            }
-          }
           if (dy > 0) {
+            let b = b + 1;
             let diff = diff - dx;
           } else {
+            let b = b - 1;
             let diff = diff + dx;
           }
         }
       }
       return;
+    }
+
+    function void drawHorizontalLine(int x, int y, int length) {
+      var int i;
+      while (i < length) {
+        do Screen.drawPixel(x+i, y);
+        let i = i + 1;
+      }
+      return ;
+    }
+
+    function void drawVerticalLine(int x, int y, int length) {
+      var int i;
+      while (i < length) {
+        do Screen.drawPixel(x, y+i);
+        let i = i + 1;
+      }
+      return ;
     }
 
     /** Draws a filled rectangle whose top left corner is (x1, y1)

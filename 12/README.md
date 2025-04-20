@@ -24,7 +24,7 @@
     - [x] setColor
     - [x] drawPixel
     - [x] drawLine
-    - [ ] drawRectangle
+    - [x] drawRectangle
     - [ ] drawCircle
 - [ ] Keyboard
     - [ ] init
