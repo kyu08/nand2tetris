@@ -78,6 +78,7 @@ class Screen {
       ) {
         return;
       }
+      // TODO: 水平、垂直は特殊ケースとして扱ってもいいかも
 
       let x = x1;
       let y = y1;
@@ -87,17 +88,25 @@ class Screen {
       let b = 0;
       let diff = 0;
 
-      while (((a = dx) | (a < dx)) & ((b = dy) | (b < dy))) {
+      while (((a = dx) | (a < dx)) & ((b = dy) | (b < Math.abs(dy)))) {
         do Screen.drawPixel(x + a, y + b);
-        if (diff < 0) {
-            let a = a + 1;
+        if (((dy > 0) & (diff < 0)) | ((dy < 0) & (diff > 0 ))) {
+          let a = a + 1;
           let diff = diff + dy;
         } else {
           // NOTE: Lineが水平なときだけ1ループ目でここに入ってしまうので特殊ケースとしてハンドリングする必要がある
           if (~((a = 0) & (dy = 0))) {
-            let b = b + 1;
+            if (dy > 0) {
+              let b = b + 1;
+            } else {
+              let b = b - 1;
+            }
           }
-          let diff = diff - dx;
+          if (dy > 0) {
+            let diff = diff - dx;
+          } else {
+            let diff = diff + dx;
+          }
         }
       }
       return;
