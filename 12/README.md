@@ -18,14 +18,14 @@
     - [x] `println`を実装
     - [x] `printInt`を実装
     - [x] `backSpace`を実装
-- [ ] Screen
+- [x] Screen
     - [x] init
     - [x] clearScreen
     - [x] setColor
     - [x] drawPixel
     - [x] drawLine
     - [x] drawRectangle
-    - [ ] drawCircle
+    - [x] drawCircle
 - [ ] Keyboard
     - [ ] init
     - [ ] keyPressed
