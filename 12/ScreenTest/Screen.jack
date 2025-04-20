@@ -48,7 +48,7 @@ class Screen {
       let addr = 16384 + ((y * 32) + (x / 16));
       let index = x - ((x / 16) * 16);
       let value = Memory.peek(addr);
-      let baseValue = 1; // 0000000000000001
+      let baseValue = 1// 0000000000000001
       while (i < index) {
         // index回左にshift
         let baseValue = baseValue * 2;
@@ -70,7 +70,7 @@ class Screen {
 
     /** Draws a line from pixel (x1,y1) to pixel (x2,y2), using the current color. */
     function void drawLine(int x1, int y1, int x2, int y2) {
-      var int x, y, dx, dy, a, b, diff;
+      var int x, y, dx, dy, a, b, diff, tempX, tempY;
       // validation
       if (
           (x1 < 0)
@@ -83,6 +83,22 @@ class Screen {
           | (255 < y2)
       ) {
         return;
+      }
+
+      // x1 < x2である前提で進めると楽なのでそうでない場合は入れ替える
+      if (x1 > x2) {
+        let tempX = x2
+        let x2 = x1;
+        let x1 = tempX;
+        let tempY = y2
+        let y2 = y1;
+        let y1 = tempY;
+      }
+      // 垂直なケースにおいてはy1 < y2にしておかないとうまくレンダリングできないので入れ替える(drawVerticalLineの中でこの処理を行ったほうがきれいだがコード品質はそこまで問題ではないので妥協する)
+      if ((x1 = x2) & (y1 > y2)) {
+        let tempY = y2
+        let y2 = y1;
+        let y1 = tempY;
       }
 
       let x = x1;
