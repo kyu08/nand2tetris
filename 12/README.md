@@ -29,7 +29,7 @@
 - [ ] Keyboard
     - [x] init
     - [x] keyPressed
-    - [ ] readChar
+    - [x] readChar
     - [ ] readLine
     - [ ] readInt
 - [ ] Sys

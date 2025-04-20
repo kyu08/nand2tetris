@@ -40,14 +40,24 @@ class Keyboard {
      *  then echoes the key to the screen, and returns the character 
      *  of the pressed key. */
     function char readChar() {
-      return;
+      var int c;
+      while (Keyboard.keyPressed() = 0) {
+        // 何もしない(キー入力を待ち受ける)
+      }
+      let c = Keyboard.keyPressed();
+      while (~(Keyboard.keyPressed() = 0)) {
+        // 何もしない(キーから手を離すのを待ち受ける)
+      }
+
+      do Output.printChar(c);
+      return c;
     }
 
     /**	Displays the message on the screen, reads from the keyboard the entered
      *  text until a newline character is detected, echoes the text to the screen,
      *  and returns its value. Also handles user backspaces. */
     function String readLine(String message) {
-      return;
+      return String.new();
     }   
 
     /** Displays the message on the screen, reads from the keyboard the entered
@@ -55,6 +65,6 @@ class Keyboard {
      *  and returns its integer value (until the first non-digit character in the
      *  entered text is detected). Also handles user backspaces. */
     function int readInt(String message) {
-      return;
+      return 0;
     }
 }
