@@ -30,7 +30,7 @@
     - [x] init
     - [x] keyPressed
     - [x] readChar
-    - [ ] readLine
+    - [x] readLine
     - [ ] readInt
 - [ ] Sys
     - [ ] init

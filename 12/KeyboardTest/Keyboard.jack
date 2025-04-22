@@ -57,7 +57,26 @@ class Keyboard {
      *  text until a newline character is detected, echoes the text to the screen,
      *  and returns its value. Also handles user backspaces. */
     function String readLine(String message) {
-      return String.new();
+      var String str;
+      var int c;
+
+      do Output.printString(message);
+      let str = String.new(10);
+      while(true) {
+        let c = Keyboard.readChar();
+        if (c = String.newLine()) {
+          do Output.println();
+          return str;
+        } else {
+          if (c = String.backSpace()) {
+            do Output.backSpace();
+            do str.eraseLastChar();
+          } else {
+            do str.appendChar(c);
+          }
+        }
+      }
+      return str;
     }   
 
     /** Displays the message on the screen, reads from the keyboard the entered
