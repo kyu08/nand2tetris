@@ -84,6 +84,25 @@ class Keyboard {
      *  and returns its integer value (until the first non-digit character in the
      *  entered text is detected). Also handles user backspaces. */
     function int readInt(String message) {
-      return 0;
+      var String input;
+      var int c;
+
+      do Output.printString(message);
+      let input = String.new(10);
+      while(true) {
+        let c = Keyboard.readChar();
+        if (c = String.newLine()) {
+          do Output.println();
+          return input.intValue();
+        } else {
+          if (c = String.backSpace()) {
+            do Output.backSpace();
+            do input.eraseLastChar();
+          } else {
+            do input.appendChar(c);
+          }
+        }
+      }
+      return input;
     }
 }

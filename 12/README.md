@@ -26,12 +26,12 @@
     - [x] drawLine
     - [x] drawRectangle
     - [x] drawCircle
-- [ ] Keyboard
+- [x] Keyboard
     - [x] init
     - [x] keyPressed
     - [x] readChar
     - [x] readLine
-    - [ ] readInt
+    - [x] readInt
 - [ ] Sys
     - [ ] init
     - [ ] halt
