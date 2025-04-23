@@ -32,8 +32,8 @@
     - [x] readChar
     - [x] readLine
     - [x] readInt
-- [ ] Sys
-    - [ ] init
+- [x] Sys
+    - [x] init
     - [x] halt
-    - [ ] wait
-    - [ ] error
+    - [x] wait
+    - [x] error

@@ -10,6 +10,15 @@ class Sys {
 
     /** Performs all the initializations required by the OS. */
     function void init() {
+      do Memory.init();
+      do Math.init();
+      do Output.init();
+      do Screen.init();
+      do Keyboard.init();
+
+      do Main.main();
+
+      do Sys.halt();
       return;
     }
 
@@ -21,10 +30,14 @@ class Sys {
 
     /** Waits approximately duration milliseconds and returns.  */
     function void wait(int duration) {
-      var int count;
-      let count = duration * 1000; // Assuming 1 MIPS. Transformed from `duration / 1000 * 1000000`.
-      while (i < count) {
-        let i = i + 1;
+      var int i, innerCount;
+      // オーバーフロー対策のためにdurationを1減らすごとに変数を初期化する（全体のループ回数を変数においてロープ条件にするとすぐにオーバーフローしてしまい2秒待てない）
+      while (0 < duration) {
+        let duration = duration - 1;
+        let innerCount = 150;
+        while (0 < innerCount) {
+          let innerCount = innerCount - 1;
+        }
       }
       return;
     }
@@ -32,6 +45,10 @@ class Sys {
     /** Displays the given error code in the form "ERR<errorCode>",
      *  and halts the program's execution. */
     function void error(int errorCode) {
+      do Output.printString("ERR<");
+      do Output.printInt(errorCode);
+      do Output.printString(">");
+      do Sys.halt();
       return;
     }
 }

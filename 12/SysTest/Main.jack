@@ -20,7 +20,6 @@ class Main {
         while (~(key = 0)) {
             let key = Keyboard.keyPressed();
         }
-        
         do Sys.wait(2000);
 
         do Output.println();
