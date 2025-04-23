@@ -34,6 +34,6 @@
     - [x] readInt
 - [ ] Sys
     - [ ] init
-    - [ ] halt
+    - [x] halt
     - [ ] wait
     - [ ] error
